@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "react-toastify";
+import Link from "next/link";
 import useAuthStore from "@/store/authStore";
 import useOrderStore from "@/store/orderStore";
 import {
@@ -10,17 +11,25 @@ import {
   FaFilter,
   FaChevronLeft,
   FaChevronRight,
+  FaEye,
 } from "react-icons/fa";
-import Image from "next/image";
+
+const STATUS_TRANSITIONS = {
+  Pending: ["Confirmed", "Cancelled"],
+  Confirmed: ["Shipped", "Cancelled"],
+  Shipped: ["Delivered"],
+  Delivered: ["Refunded"],
+  Cancelled: [],
+  Refunded: [],
+};
 
 const statusOptions = [
-  "Processing",
-  "Transferred to delivery partner",
+  "Pending",
+  "Confirmed",
   "Shipped",
   "Delivered",
-  "Refund Requested",
-  "Refund Success",
   "Cancelled",
+  "Refunded",
 ];
 
 export default function OrderManagement() {
@@ -155,6 +164,24 @@ export default function OrderManagement() {
     }
   };
 
+  const getRefundReason = (order) => {
+    const refundEntry = order?.statusHistory?.find(
+      (entry) => entry.status === "Refunded"
+    );
+    return refundEntry?.reason || "No reason provided";
+  };
+
+  const getCustomerName = (customer) => {
+    if (!customer) return "Unknown";
+    if (customer.username) return customer.username;
+    if (customer.fullname?.firstName || customer.fullname?.lastName) {
+      return `${customer.fullname.firstName || ""} ${
+        customer.fullname.lastName || ""
+      }`.trim();
+    }
+    return "Unknown";
+  };
+
   return (
     <div className="py-6 max-w-7xl mx-auto">
       <h1 className="text-2xl font-bold text-gray-900 mb-6">
@@ -204,7 +231,7 @@ export default function OrderManagement() {
             Retry
           </button>
         </div>
-      ) : orders.length === 0 ? (
+      ) : !Array.isArray(orders) || orders.length === 0 ? (
         <p className="text-center text-gray-600">No orders found.</p>
       ) : (
         <>
@@ -233,25 +260,37 @@ export default function OrderManagement() {
                 {orders.map((order) => (
                   <tr key={order._id}>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {order._id}
+                      <Link
+                        href={`/shop/orders/${order._id}`}
+                        className="text-blue-600 hover:text-blue-800"
+                      >
+                        {order._id}
+                      </Link>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {order.user.name} ({order.user.email})
+                      {getCustomerName(order.customer)} (
+                      {order.customer?.email || "Unknown"})
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      ${order.totalPrice.toFixed(2)}
+                      ${order.totalAmount?.toFixed(2) || "0.00"}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                       {order.status}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium flex space-x-4">
+                      <Link
+                        href={`/shop/orders/${order._id}`}
+                        className="text-indigo-600 hover:text-indigo-800 flex items-center"
+                      >
+                        <FaEye className="mr-1" /> View Details
+                      </Link>
                       <button
                         onClick={() => openModal(order, "status")}
-                        className="text-blue-600 hover:text-blue-800 mr-4"
+                        className="text-blue-600 hover:text-blue-800"
                       >
                         Update Status
                       </button>
-                      {order.status === "Refund Requested" && (
+                      {order.status === "Refunded" && (
                         <button
                           onClick={() => openModal(order, "refund")}
                           className="text-green-600 hover:text-green-800"
@@ -345,7 +384,7 @@ export default function OrderManagement() {
             ) : (
               <>
                 <p className="text-sm text-gray-600 mb-4">
-                  Refund Reason: {selectedOrder.refundReason}
+                  Refund Reason: {getRefundReason(selectedOrder)}
                 </p>
                 <label
                   htmlFor="reason"

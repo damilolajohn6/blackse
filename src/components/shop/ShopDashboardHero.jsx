@@ -79,10 +79,11 @@ const ShopDashboardHero = () => {
           className={`px-2 py-1 rounded-full text-xs font-medium ${
             params.value === "Delivered"
               ? "bg-green-100 text-green-600"
-              : params.value === "Processing" ||
-                params.value === "Transferred to delivery partner"
+              : params.value === "Pending" ||
+                params.value === "Confirmed" ||
+                params.value === "Shipped"
               ? "bg-yellow-100 text-yellow-600"
-              : params.value === "Refund Requested"
+              : params.value === "Refunded"
               ? "bg-red-100 text-red-600"
               : "bg-gray-100 text-gray-600"
           }`}
@@ -112,8 +113,8 @@ const ShopDashboardHero = () => {
       flex: 0.5,
       minWidth: 100,
       renderCell: (params) => (
-        <Link href={`/shop/orders/${params.id}`}>
-          <Button>
+        <Link href={`/shop/orders/${params.row.id}`}>
+          <Button variant="text" color="primary">
             <AiOutlineArrowRight size={20} />
           </Button>
         </Link>
@@ -122,10 +123,12 @@ const ShopDashboardHero = () => {
   ];
 
   const rows =
-    orders.map((item) => ({
+    orders?.map((item) => ({
       id: item._id,
-      itemsQty: item.cart.reduce((acc, cur) => acc + cur.quantity, 0),
-      total: `US$ ${item.totalPrice.toFixed(2)}`,
+      itemsQty: Array.isArray(item.items)
+        ? item.items.reduce((acc, cur) => acc + (cur.quantity || 0), 0)
+        : 0,
+      total: `US$ ${item.totalAmount?.toFixed(2) || "0.00"}`,
       status: item.status,
     })) || [];
 
@@ -210,7 +213,7 @@ const ShopDashboardHero = () => {
                 {pendingOrders}
               </h5>
               <Link
-                href="/shop/orders?status=Processing"
+                href="/shop/orders?status=Pending"
                 className="text-blue-600 mt-2 block hover:underline"
               >
                 Manage Orders
