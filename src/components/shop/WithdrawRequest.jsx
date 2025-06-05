@@ -28,87 +28,42 @@ const WithdrawRequest = () => {
     accountNumber: "",
     bankName: "",
     email: "",
-    description: "",
   });
   const [isLoading, setIsLoading] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!isSeller || !seller) {
+      toast.error("Please log in as a seller");
+      router.push("/shop/login");
+      return;
+    }
+
+    if (!amount || amount < 10 || amount > 10000) {
+      toast.error("Amount must be between $10 and $10,000");
+      return;
+    }
+
+    const withdrawMethod = { type: method, details };
+    if (!method || !Object.values(details).some((v) => v)) {
+      toast.error("Please select a withdrawal method and provide details");
+      return;
+    }
+
     setIsLoading(true);
-
     try {
-      // Validate seller authentication
-      if (!isSeller || !seller || !sellerToken) {
-        toast.error("Please log in as a seller");
-        router.push("/shop/login");
-        return;
-      }
-
-      // Validate amount
-      const parsedAmount = parseFloat(amount);
-      if (isNaN(parsedAmount) || parsedAmount < 10 || parsedAmount > 10000) {
-        toast.error("Amount must be between $10 and $10,000");
-        return;
-      }
-
-      // Validate withdrawal method and details
-      if (!method) {
-        toast.error("Please select a withdrawal method");
-        return;
-      }
-
-      const withdrawMethod = { type: method, details: {} };
-      if (method === "BankTransfer") {
-        if (!details.accountNumber || !details.bankName) {
-          toast.error("Please provide account number and bank name");
-          return;
-        }
-        withdrawMethod.details = {
-          accountNumber: details.accountNumber,
-          bankName: details.bankName,
-        };
-      } else if (method === "PayPal") {
-        if (
-          !details.email ||
-          !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(details.email)
-        ) {
-          toast.error("Please provide a valid PayPal email");
-          return;
-        }
-        withdrawMethod.details = { email: details.email };
-      } else if (method === "Other") {
-        if (!details.description) {
-          toast.error("Please provide withdrawal details");
-          return;
-        }
-        withdrawMethod.details = { description: details.description };
-      }
-
-      // Check available balance
-      if (parsedAmount > (seller.availableBalance || 0)) {
-        toast.error("Insufficient available balance");
-        return;
-      }
-
-      // Make API call
       const { data } = await axios.post(
         `${API_BASE_URL}/withdraw/create-withdraw-request`,
-        { amount: parsedAmount, withdrawMethod },
+        { amount: Number(amount), withdrawMethod },
         {
           headers: { Authorization: `Bearer ${sellerToken}` },
           withCredentials: true,
         }
       );
-
       toast.success("Withdrawal request created successfully!");
       setAmount("");
       setMethod("");
-      setDetails({
-        accountNumber: "",
-        bankName: "",
-        email: "",
-        description: "",
-      });
+      setDetails({ accountNumber: "", bankName: "", email: "" });
       router.push("/shop/dashboard");
     } catch (error) {
       const errorMessage =
@@ -116,8 +71,6 @@ const WithdrawRequest = () => {
       console.error("create-withdraw-request error:", {
         message: errorMessage,
         status: error.response?.status,
-        details: error.response?.data,
-        withdrawMethod: { type: method, details },
       });
       toast.error(errorMessage);
     } finally {
@@ -142,14 +95,6 @@ const WithdrawRequest = () => {
           onChange={(e) => setAmount(e.target.value)}
           required
           inputProps={{ min: 10, max: 10000, step: 0.01 }}
-          error={
-            amount && (parseFloat(amount) < 10 || parseFloat(amount) > 10000)
-          }
-          helperText={
-            amount && (parseFloat(amount) < 10 || parseFloat(amount) > 10000)
-              ? "Amount must be between $10 and $10,000"
-              : ""
-          }
         />
         <FormControl fullWidth>
           <InputLabel>Method</InputLabel>
@@ -193,14 +138,6 @@ const WithdrawRequest = () => {
             value={details.email}
             onChange={(e) => setDetails({ ...details, email: e.target.value })}
             required
-            error={
-              details.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(details.email)
-            }
-            helperText={
-              details.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(details.email)
-                ? "Please enter a valid email"
-                : ""
-            }
           />
         )}
         {method === "Other" && (
@@ -212,8 +149,6 @@ const WithdrawRequest = () => {
               setDetails({ ...details, description: e.target.value })
             }
             required
-            multiline
-            rows={3}
           />
         )}
         <Button

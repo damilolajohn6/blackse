@@ -27,7 +27,7 @@ export default function ShopLayout({ children }) {
               className="flex items-center space-x-3"
             >
               <Image
-                src={seller?.avatar?.url || "/logo.svg"}
+                src={seller?.avatar?.url || "/blacknsell.png"}
                 alt={seller?.name || "BlacknSell Shop"}
                 width={40}
                 height={40}

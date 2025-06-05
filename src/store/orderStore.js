@@ -6,7 +6,6 @@ const API_BASE_URL =
 
 const useOrderStore = create((set) => ({
   orders: [],
-  order: null, // For single order view
   isLoading: false,
   error: null,
   total: 0,
@@ -17,30 +16,6 @@ const useOrderStore = create((set) => ({
     pendingOrders: 0,
     totalOrders: 0,
     recentOrders: 0,
-  },
-
-  fetchSingleOrder: async (orderId, shopId, token) => {
-    set({ isLoading: true, error: null, order: null });
-    try {
-      const response = await axios.get(
-        `${API_BASE_URL}/order/get-single-order/${orderId}`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-          withCredentials: true,
-        }
-      );
-      set({
-        order: response.data.order,
-        isLoading: false,
-      });
-      return response.data.order;
-    } catch (error) {
-      set({
-        error: error.response?.data?.message || "Failed to fetch order",
-        isLoading: false,
-      });
-      throw error;
-    }
   },
 
   fetchSellerOrders: async (
@@ -123,7 +98,6 @@ const useOrderStore = create((set) => ({
         orders: state.orders.map((order) =>
           order._id === orderId ? response.data.order : order
         ),
-        order: state.order?._id === orderId ? response.data.order : state.order,
         isLoading: false,
       }));
       return response.data.order;
@@ -141,7 +115,7 @@ const useOrderStore = create((set) => ({
     try {
       const response = await axios.put(
         `${API_BASE_URL}/order/order-refund-success/${orderId}`,
-        { status: "Refunded", reason },
+        { status: "Refund Success", reason },
         {
           withCredentials: true,
           headers: {
@@ -152,43 +126,14 @@ const useOrderStore = create((set) => ({
       );
       set((state) => ({
         orders: state.orders.map((order) =>
-          order._id === orderId ? { ...order, status: "Refunded" } : order
+          order._id === orderId ? { ...order, status: "Refund Success" } : order
         ),
-        order:
-          state.order?._id === orderId
-            ? { ...state.order, status: "Refunded" }
-            : state.order,
         isLoading: false,
       }));
       return response.data;
     } catch (error) {
       set({
         error: error.response?.data?.message || "Failed to approve refund",
-        isLoading: false,
-      });
-      throw error;
-    }
-  },
-
-  deleteOrder: async (orderId, token) => {
-    set({ isLoading: true, error: null });
-    try {
-      const response = await axios.delete(
-        `${API_BASE_URL}/order/delete-order/${orderId}`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-          withCredentials: true,
-        }
-      );
-      set((state) => ({
-        orders: state.orders.filter((order) => order._id !== orderId),
-        order: state.order?._id === orderId ? null : state.order,
-        isLoading: false,
-      }));
-      return response.data;
-    } catch (error) {
-      set({
-        error: error.response?.data?.message || "Failed to delete order",
         isLoading: false,
       });
       throw error;

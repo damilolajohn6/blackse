@@ -41,7 +41,7 @@ export default function Header() {
               </Link>
             </div>
             <div className={`${styles.button} ml-4 !rounded-[12px]`}>
-              <Link href="/learn/login">
+              <Link href="/instructor/login">
                 <h1 className="text-[#fff] flex items-center">
                   Become a Tutor <IoIosArrowForward className="ml-1" />
                 </h1>

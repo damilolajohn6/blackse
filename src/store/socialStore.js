@@ -1,10 +1,9 @@
-// socialStore.js
 import { create } from "zustand";
 import axios from "axios";
 import io from "socket.io-client";
 import { toast } from "react-toastify";
 
-process.env.NEXT_PUBLIC_SERVER
+const API_BASE_URL = process.env.NEXT_PUBLIC_SERVER
   ? `${process.env.NEXT_PUBLIC_SERVER}`
   : "http://localhost:8000/api/v2";
 const SOCKET_URL = process.env.NEXT_SOCKET_URL_SERVER
@@ -12,7 +11,7 @@ const SOCKET_URL = process.env.NEXT_SOCKET_URL_SERVER
   : "http://localhost:8000";
 
 const useSocialStore = create((set, get) => ({
-  posts: [],
+  mixedPosts: [],
   users: [],
   messages: [],
   recipientId: "",
@@ -88,10 +87,58 @@ const useSocialStore = create((set, get) => ({
         headers: { Authorization: `Bearer ${token}` },
         withCredentials: true,
       });
-      set({ posts: data.posts || [] });
+      set((state) => ({
+        mixedPosts: [
+          ...state.mixedPosts.filter(
+            (p) => !data.posts.some((newP) => newP.post._id === p.post._id)
+          ),
+          ...(data.posts || []).filter(
+            (p) => p.post && p.user && Array.isArray(p.post.comments)
+          ),
+        ].sort(
+          (a, b) =>
+            new Date(b.post.createdAt).getTime() -
+            new Date(a.post.createdAt).getTime()
+        ),
+      }));
     } catch (error) {
       console.error("FETCH TIMELINE ERROR:", error.response?.data, error);
       toast.error(error.response?.data?.message || "Failed to fetch timeline");
+    } finally {
+      set({ isFetching: false });
+    }
+  },
+
+  fetchRandomPosts: async (token) => {
+    if (!token) {
+      console.warn("fetchRandomPosts: No token provided");
+      return;
+    }
+    set({ isFetching: true });
+    try {
+      const { data } = await axios.get(`${API_BASE_URL}/social/random-posts`, {
+        headers: { Authorization: `Bearer ${token}` },
+        withCredentials: true,
+      });
+      set((state) => ({
+        mixedPosts: [
+          ...state.mixedPosts.filter(
+            (p) => !data.posts.some((newP) => newP.post._id === p.post._id)
+          ),
+          ...(data.posts || []).filter(
+            (p) => p.post && p.user && Array.isArray(p.post.comments)
+          ),
+        ].sort(
+          (a, b) =>
+            new Date(b.post.createdAt).getTime() -
+            new Date(a.post.createdAt).getTime()
+        ),
+      }));
+    } catch (error) {
+      console.error("FETCH RANDOM POSTS ERROR:", error.response?.data, error);
+      toast.error(
+        error.response?.data?.message || "Failed to fetch random posts"
+      );
     } finally {
       set({ isFetching: false });
     }
@@ -210,11 +257,134 @@ const useSocialStore = create((set, get) => ({
       toast.success("Comment added");
       set((state) => ({
         commentContent: { ...state.commentContent, [postId]: "" },
+        mixedPosts: state.mixedPosts.map((p) =>
+          p.post._id === postId ? { ...p, post: data.post } : p
+        ),
       }));
-      await get().fetchTimeline(token);
     } catch (error) {
       console.error("COMMENT POST ERROR:", error.response?.data, error);
       toast.error(error.response?.data?.message || "Failed to add comment");
+    }
+  },
+
+  likeComment: async (postId, commentId, token) => {
+    try {
+      const { data } = await axios.post(
+        `${API_BASE_URL}/social/like-comment/${postId}/${commentId}`,
+        {},
+        { headers: { Authorization: `Bearer ${token}` }, withCredentials: true }
+      );
+      toast.success("Comment liked");
+      set((state) => ({
+        mixedPosts: state.mixedPosts.map((p) =>
+          p.post._id === postId
+            ? {
+                ...p,
+                post: {
+                  ...data.post,
+                  comments: (data.post.comments || []).map((c) => ({
+                    ...c,
+                    user: c.user || { username: "unknown", avatar: null },
+                    replies: (c.replies || []).map((r) => ({
+                      ...r,
+                      user: r.user || { username: "unknown", avatar: null },
+                      replies: (r.replies || []).map((nr) => ({
+                        ...nr,
+                        user: nr.user || { username: "unknown", avatar: null },
+                      })),
+                    })),
+                  })),
+                },
+              }
+            : p
+        ),
+      }));
+    } catch (error) {
+      console.error("LIKE COMMENT ERROR:", error.response?.data, error);
+      toast.error(error.response?.data?.message || "Failed to like comment");
+    }
+  },
+
+  unlikeComment: async (postId, commentId, token) => {
+    try {
+      const { data } = await axios.post(
+        `${API_BASE_URL}/social/unlike-comment/${postId}/${commentId}`,
+        {},
+        { headers: { Authorization: `Bearer ${token}` }, withCredentials: true }
+      );
+      toast.success("Comment unliked");
+      set((state) => ({
+        mixedPosts: state.mixedPosts.map((p) =>
+          p.post._id === postId
+            ? {
+                ...p,
+                post: {
+                  ...data.post,
+                  comments: (data.post.comments || []).map((c) => ({
+                    ...c,
+                    user: c.user || { username: "unknown", avatar: null },
+                    replies: (c.replies || []).map((r) => ({
+                      ...r,
+                      user: r.user || { username: "unknown", avatar: null },
+                      replies: (r.replies || []).map((nr) => ({
+                        ...nr,
+                        user: nr.user || { username: "unknown", avatar: null },
+                      })),
+                    })),
+                  })),
+                },
+              }
+            : p
+        ),
+      }));
+    } catch (error) {
+      console.error("UNLIKE COMMENT ERROR:", error.response?.data, error);
+      toast.error(error.response?.data?.message || "Failed to unlike comment");
+    }
+  },
+
+  replyComment: async (postId, commentId, token) => {
+    const { commentContent } = get();
+    const replyKey = `reply_${postId}_${commentId}`;
+    if (!commentContent[replyKey]) {
+      toast.error("Reply content is required");
+      return;
+    }
+    try {
+      const { data } = await axios.post(
+        `${API_BASE_URL}/social/reply-comment/${postId}/${commentId}`,
+        { content: commentContent[replyKey] },
+        { headers: { Authorization: `Bearer ${token}` }, withCredentials: true }
+      );
+      toast.success("Reply added");
+      set((state) => ({
+        commentContent: { ...state.commentContent, [replyKey]: "" },
+        mixedPosts: state.mixedPosts.map((p) =>
+          p.post._id === postId
+            ? {
+                ...p,
+                post: {
+                  ...data.post,
+                  comments: (data.post.comments || []).map((c) => ({
+                    ...c,
+                    user: c.user || { username: "unknown", avatar: null },
+                    replies: (c.replies || []).map((r) => ({
+                      ...r,
+                      user: r.user || { username: "unknown", avatar: null },
+                      replies: (r.replies || []).map((nr) => ({
+                        ...nr,
+                        user: nr.user || { username: "unknown", avatar: null },
+                      })),
+                    })),
+                  })),
+                },
+              }
+            : p
+        ),
+      }));
+    } catch (error) {
+      console.error("REPLY COMMENT ERROR:", error.response?.data, error);
+      toast.error(error.response?.data?.message || "Failed to add reply");
     }
   },
 
@@ -248,9 +418,9 @@ const useSocialStore = create((set, get) => ({
 
   setPostContent: (content) => set({ postContent: content }),
   setMessageContent: (content) => set({ messageContent: content }),
-  setCommentContent: (postId, content) =>
+  setCommentContent: (key, content) =>
     set((state) => ({
-      commentContent: { ...state.commentContent, [postId]: content },
+      commentContent: { ...state.commentContent, [key]: content },
     })),
   setRecipientId: (id) => set({ recipientId: id }),
 }));

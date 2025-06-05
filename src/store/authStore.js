@@ -3,9 +3,8 @@ import { persist } from "zustand/middleware";
 import axios from "axios";
 import { toast } from "react-toastify";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_SERVER
-  ? `${process.env.NEXT_PUBLIC_SERVER}`
-  : "http://localhost:8000/api/v2";
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_SERVER || "http://localhost:8000/api/v2";
 
 const useAuthStore = create(
   persist(
@@ -18,6 +17,7 @@ const useAuthStore = create(
       isSeller: false,
       isLoading: false,
 
+      // User signup
       signup: async (userData) => {
         set({ isLoading: true });
         try {
@@ -30,21 +30,15 @@ const useAuthStore = create(
             formData.append("phone", JSON.stringify(userData.phone));
           }
           if (userData.avatar) {
-            formData.append("avatar", userData.avatar);
+            formData.append("avatar", JSON.stringify(userData.avatar));
           }
           formData.append("role", userData.role || "user");
 
-          console.debug("Signup request:", {
-            url: `${API_BASE_URL}/user/create-user`,
-            userData: {
-              fullname: userData.fullname,
-              username: userData.username,
-              email: userData.email,
-              role: userData.role,
-              hasPhone: !!userData.phone,
-              hasAvatar: !!userData.avatar,
-            },
-          });
+          const formDataEntries = {};
+          for (const [key, value] of formData.entries()) {
+            formDataEntries[key] = value;
+          }
+          console.debug("Signup FormData:", formDataEntries);
 
           const res = await axios.post(
             `${API_BASE_URL}/user/create-user`,
@@ -59,15 +53,17 @@ const useAuthStore = create(
           return { success: true, email: userData.email };
         } catch (error) {
           console.error("Signup error:", error.message, error.response?.data);
-          toast.error(
-            error.response?.data?.message || "Failed to create account"
-          );
-          return { success: false, message: error.response?.data?.message };
+          const message =
+            error.response?.data?.message ||
+            "Failed to create account. Please try again.";
+          toast.error(message);
+          return { success: false, message };
         } finally {
           set({ isLoading: false });
         }
       },
 
+      // Verify OTP
       verifyOtp: async (email, otp, router) => {
         set({ isLoading: true });
         try {
@@ -99,13 +95,16 @@ const useAuthStore = create(
             error.message,
             error.response?.data
           );
-          toast.error(error.response?.data?.message || "Failed to verify OTP");
-          return { success: false };
+          const message =
+            error.response?.data?.message || "Failed to verify OTP.";
+          toast.error(message);
+          return { success: false, message };
         } finally {
           set({ isLoading: false });
         }
       },
 
+      // Resend OTP
       resendOtp: async (email) => {
         set({ isLoading: true });
         try {
@@ -126,13 +125,16 @@ const useAuthStore = create(
             error.message,
             error.response?.data
           );
-          toast.error(error.response?.data?.message || "Failed to resend OTP");
-          return { success: false };
+          const message =
+            error.response?.data?.message || "Failed to resend OTP.";
+          toast.error(message);
+          return { success: false, message };
         } finally {
           set({ isLoading: false });
         }
       },
 
+      // User login
       login: async (email, password, router) => {
         set({ isLoading: true });
         try {
@@ -159,13 +161,118 @@ const useAuthStore = create(
           return { success: true };
         } catch (error) {
           console.error("Login error:", error.message, error.response?.data);
-          toast.error(error.response?.data?.message || "Login failed");
-          return { success: false };
+          const message =
+            error.response?.data?.message || "Login failed. Please try again.";
+          toast.error(message);
+          return { success: false, message };
         } finally {
           set({ isLoading: false });
         }
       },
 
+      // Forgot password
+      forgotPassword: async (email) => {
+        set({ isLoading: true });
+        try {
+          console.debug("Forgot password request:", {
+            url: `${API_BASE_URL}/user/forgot-password`,
+            email,
+          });
+          const res = await axios.post(
+            `${API_BASE_URL}/user/forgot-password`,
+            { email },
+            { withCredentials: true }
+          );
+          toast.success(res.data.message);
+          return { success: true };
+        } catch (error) {
+          console.error(
+            "Forgot password error:",
+            error.message,
+            error.response?.data
+          );
+          const message =
+            error.response?.data?.message || "Failed to send reset OTP.";
+          toast.error(message);
+          return { success: false, message };
+        } finally {
+          set({ isLoading: false });
+        }
+      },
+
+      // Reset password
+      resetPassword: async (
+        email,
+        otp,
+        newPassword,
+        confirmPassword,
+        router
+      ) => {
+        set({ isLoading: true });
+        try {
+          console.debug("Reset password request:", {
+            url: `${API_BASE_URL}/user/reset-password`,
+            email,
+          });
+          const res = await axios.post(
+            `${API_BASE_URL}/user/reset-password`,
+            { email, otp, newPassword, confirmPassword },
+            { withCredentials: true }
+          );
+          toast.success(res.data.message);
+          router.push("/login");
+          return { success: true };
+        } catch (error) {
+          console.error(
+            "Reset password error:",
+            error.message,
+            error.response?.data
+          );
+          const message =
+            error.response?.data?.message || "Failed to reset password.";
+          toast.error(message);
+          return { success: false, message };
+        } finally {
+          set({ isLoading: false });
+        }
+      },
+
+      // Fetch user profile
+      fetchProfile: async (userId) => {
+        set({ isLoading: true });
+        try {
+          const { token } = get();
+          if (!token) {
+            throw new Error("No authentication token available");
+          }
+          console.debug("Fetch profile request:", {
+            url: `${API_BASE_URL}/social/profile/${userId}`,
+            userId,
+          });
+          const { data } = await axios.get(
+            `${API_BASE_URL}/social/profile/${userId}`,
+            {
+              headers: { Authorization: `Bearer ${token}` },
+              withCredentials: true,
+            }
+          );
+          return { success: true, profile: data.user };
+        } catch (error) {
+          console.error(
+            "Fetch profile error:",
+            error.message,
+            error.response?.data
+          );
+          const message =
+            error.response?.data?.message || "Failed to fetch profile";
+          toast.error(message);
+          return { success: false, message };
+        } finally {
+          set({ isLoading: false });
+        }
+      },
+
+      // Shop login
       loginShop: async (email, password, router) => {
         set({ isLoading: true });
         try {
@@ -194,213 +301,40 @@ const useAuthStore = create(
             error.message,
             error.response?.data
           );
-          toast.error(error.response?.data?.message || "Shop login failed");
-          return { success: false };
+          const message = error.response?.data?.message || "Shop login failed.";
+          toast.error(message);
+          return { success: false, message };
         } finally {
           set({ isLoading: false });
         }
       },
 
-      forgotPassword: async (email) => {
-        set({ isLoading: true });
-        try {
-          console.debug("Forgot password request:", {
-            url: `${API_BASE_URL}/user/forgot-password`, // Fixed endpoint
-            email,
-          });
-          const res = await axios.post(
-            `${API_BASE_URL}/user/forgot-password`, // Fixed endpoint
-            { email },
-            { withCredentials: true }
-          );
-          toast.success(res.data.message);
-          return { success: true };
-        } catch (error) {
-          console.error(
-            "Forgot password error:",
-            error.message,
-            error.response?.data
-          );
-          toast.error(
-            error.response?.data?.message || "Failed to send reset OTP"
-          );
-          return { success: false };
-        } finally {
-          set({ isLoading: false });
-        }
-      },
-
-      resetPassword: async (
-        email,
-        otp,
-        newPassword,
-        confirmPassword,
-        router
-      ) => {
-        // Added confirmPassword
-        set({ isLoading: true });
-        try {
-          console.debug("Reset password request:", {
-            url: `${API_BASE_URL}/user/reset-password`, // Fixed endpoint
-            email,
-          });
-          const res = await axios.post(
-            `${API_BASE_URL}/user/reset-password`, // Fixed endpoint
-            { email, otp, newPassword, confirmPassword }, // Added confirmPassword
-            { withCredentials: true }
-          );
-          toast.success(res.data.message);
-          router.push("/login");
-          return { success: true };
-        } catch (error) {
-          console.error(
-            "Reset password error:",
-            error.message,
-            error.response?.data
-          );
-          toast.error(
-            error.response?.data?.message || "Failed to reset password"
-          );
-          return { success: false };
-        } finally {
-          set({ isLoading: false });
-        }
-      },
-
-      logout: async (router) => {
-        set({ isLoading: true });
-        try {
-          console.debug("Logout request:", {
-            user: `${API_BASE_URL}/user/logout`,
-            shop: `${API_BASE_URL}/shop/logout`,
-          });
-          await Promise.all([
-            axios.get(`${API_BASE_URL}/user/logout`, { withCredentials: true }),
-            axios.get(`${API_BASE_URL}/shop/logout`, { withCredentials: true }),
-          ]);
-          set({
-            user: null,
-            token: null,
-            seller: null,
-            sellerToken: null,
-            isAuthenticated: false,
-            isSeller: false,
-          });
-          localStorage.removeItem("token");
-          localStorage.removeItem("seller_token");
-          toast.success("Log out successful!");
-          router.push("/login");
-          return { success: true };
-        } catch (error) {
-          console.error("Logout error:", error.message, error.response?.data);
-          toast.error(error.response?.data?.message || "Logout failed");
-          return { success: false };
-        } finally {
-          set({ isLoading: false });
-        }
-      },
-
-      checkAuth: async () => {
-        set({ isLoading: true });
-        try {
-          const token = localStorage.getItem("token");
-          if (!token) {
-            console.debug("checkAuth: No token found");
-            return { success: false, isAuthenticated: false };
-          }
-          console.debug("Check auth request:", {
-            url: `${API_BASE_URL}/user/getuser`,
-          });
-          const { data } = await axios.get(`${API_BASE_URL}/user/getuser`, {
-            headers: { Authorization: `Bearer ${token}` },
-            withCredentials: true,
-          });
-          set({
-            user: data.user,
-            token,
-            isAuthenticated: true,
-            isSeller:
-              data.user.role === "seller" &&
-              data.user.approvalStatus.isSellerApproved,
-          });
-          return { success: true, isAuthenticated: true };
-        } catch (error) {
-          console.error(
-            "Check auth error:",
-            error.message,
-            error.response?.data
-          );
-          set({
-            isAuthenticated: false,
-            user: null,
-            token: null,
-          });
-          localStorage.removeItem("token");
-          return { success: false, isAuthenticated: false };
-        } finally {
-          set({ isLoading: false });
-        }
-      },
-
-      loadUser: async () => {
-        set({ isLoading: true });
-        try {
-          const currentToken = get().token;
-          if (!currentToken) {
-            throw new Error("No authentication token available");
-          }
-          console.debug("Load user request:", {
-            url: `${API_BASE_URL}/user/getuser`,
-          });
-          const res = await axios.get(`${API_BASE_URL}/user/getuser`, {
-            headers: { Authorization: `Bearer ${currentToken}` },
-            withCredentials: true,
-          });
-          set({
-            user: res.data.user,
-            token: currentToken,
-            isAuthenticated: true,
-            isSeller:
-              res.data.user.role === "seller" &&
-              res.data.user.approvalStatus.isSellerApproved,
-          });
-          return { success: true, user: res.data.user };
-        } catch (error) {
-          console.error(
-            "Load user error:",
-            error.message,
-            error.response?.status,
-            error.response?.data
-          );
-          if (error.response?.status === 401) {
-            set({
-              user: null,
-              token: null,
-              isAuthenticated: false,
-              isSeller: false,
-            });
-            localStorage.removeItem("token");
-          }
-          return {
-            success: false,
-            message: error.response?.data?.message || "Failed to load user",
-          };
-        } finally {
-          set({ isLoading: false });
-        }
-      },
-
+      // Create shop
       createShop: async (shopData, router) => {
         set({ isLoading: true });
         try {
-          console.debug("Create shop request:", {
-            url: `${API_BASE_URL}/shop/create-shop`,
-            shopData,
-          });
+          console.debug("Create shop input data:", shopData);
+
+          const payload = {
+            fullname: shopData.fullname,
+            name: shopData.name,
+            email: shopData.email,
+            password: shopData.password,
+            address: shopData.address,
+            zipCode: shopData.zipCode,
+            phone: shopData.phone,
+            avatar: shopData.avatar,
+          };
+
+          console.debug("Create shop payload:", payload);
+
           const res = await axios.post(
             `${API_BASE_URL}/shop/create-shop`,
-            shopData,
-            { withCredentials: true }
+            payload,
+            {
+              headers: { "Content-Type": "application/json" },
+              withCredentials: true,
+            }
           );
           toast.success(res.data.message);
           router.push(
@@ -415,13 +349,16 @@ const useAuthStore = create(
             error.message,
             error.response?.data
           );
-          toast.error(error.response?.data?.message || "Failed to create shop");
-          return { success: false };
+          const message =
+            error.response?.data?.message || "Failed to create shop.";
+          toast.error(message);
+          return { success: false, message };
         } finally {
           set({ isLoading: false });
         }
       },
 
+      // Activate shop
       activateShop: async (email, otp, router) => {
         set({ isLoading: true });
         try {
@@ -451,15 +388,16 @@ const useAuthStore = create(
             error.message,
             error.response?.data
           );
-          toast.error(
-            error.response?.data?.message || "Failed to activate shop"
-          );
-          return { success: false };
+          const message =
+            error.response?.data?.message || "Failed to activate shop.";
+          toast.error(message);
+          return { success: false, message };
         } finally {
           set({ isLoading: false });
         }
       },
 
+      // Load shop
       loadShop: async () => {
         set({ isLoading: true });
         try {
@@ -509,6 +447,7 @@ const useAuthStore = create(
         }
       },
 
+      // Create coupon
       createCoupon: async (couponData) => {
         set({ isLoading: true });
         try {
@@ -536,15 +475,16 @@ const useAuthStore = create(
             error.message,
             error.response?.data
           );
-          toast.error(
-            error.response?.data?.message || "Failed to create coupon"
-          );
-          return { success: false };
+          const message =
+            error.response?.data?.message || "Failed to create coupon.";
+          toast.error(message);
+          return { success: false, message };
         } finally {
           set({ isLoading: false });
         }
       },
 
+      // Fetch coupons
       fetchCoupons: async () => {
         set({ isLoading: true });
         try {
@@ -576,19 +516,20 @@ const useAuthStore = create(
             error.response?.status,
             error.response?.data
           );
-          toast.error(
-            error.response?.data?.message || "Failed to fetch coupons"
-          );
+          const message =
+            error.response?.data?.message || "Failed to fetch coupons.";
+          toast.error(message);
           return {
             success: false,
             coupons: [],
-            message: error.response?.data?.message || "Failed to fetch coupons",
+            message,
           };
         } finally {
           set({ isLoading: false });
         }
       },
 
+      // Update coupon
       updateCoupon: async (couponId, couponData) => {
         set({ isLoading: true });
         try {
@@ -616,15 +557,16 @@ const useAuthStore = create(
             error.message,
             error.response?.data
           );
-          toast.error(
-            error.response?.data?.message || "Failed to update coupon"
-          );
-          return { success: false };
+          const message =
+            error.response?.data?.message || "Failed to update coupon.";
+          toast.error(message);
+          return { success: false, message };
         } finally {
           set({ isLoading: false });
         }
       },
 
+      // Delete coupon
       deleteCoupon: async (couponId) => {
         set({ isLoading: true });
         try {
@@ -650,10 +592,122 @@ const useAuthStore = create(
             error.message,
             error.response?.data
           );
-          toast.error(
-            error.response?.data?.message || "Failed to delete coupon"
+          const message =
+            error.response?.data?.message || "Failed to delete coupon.";
+          toast.error(message);
+          return { success: false, message };
+        } finally {
+          set({ isLoading: false });
+        }
+      },
+
+      // Logout (all roles)
+      logout: async (router) => {
+        set({ isLoading: true });
+        try {
+          console.debug("Logout request:", {
+            user: `${API_BASE_URL}/user/logout`,
+            shop: `${API_BASE_URL}/shop/logout`,
+            instructor: `${API_BASE_URL}/instructor/instructor-logout`,
+          });
+          await Promise.all([
+            axios.get(`${API_BASE_URL}/user/logout`, { withCredentials: true }),
+            axios.get(`${API_BASE_URL}/shop/logout`, { withCredentials: true }),
+            axios.get(`${API_BASE_URL}/instructor/instructor-logout`, {
+              withCredentials: true,
+            }),
+          ]);
+          set({
+            user: null,
+            token: null,
+            seller: null,
+            sellerToken: null,
+            isAuthenticated: false,
+            isSeller: false,
+          });
+          localStorage.removeItem("token");
+          localStorage.removeItem("seller_token");
+          localStorage.removeItem("instructor_token");
+          toast.success("Log out successful!");
+          router.push("/login");
+          return { success: true };
+        } catch (error) {
+          console.error("Logout error:", error.message, error.response?.data);
+          const message = error.response?.data?.message || "Logout failed.";
+          toast.error(message);
+          return { success: false, message };
+        } finally {
+          set({ isLoading: false });
+        }
+      },
+
+      // Check authentication
+      checkAuth: async () => {
+        set({ isLoading: true });
+        try {
+          const token = localStorage.getItem("token");
+          const sellerToken = localStorage.getItem("seller_token");
+
+          if (token) {
+            console.debug("Check user auth request:", {
+              url: `${API_BASE_URL}/user/getuser`,
+            });
+            const { data } = await axios.get(`${API_BASE_URL}/user/getuser`, {
+              headers: { Authorization: `Bearer ${token}` },
+              withCredentials: true,
+            });
+            set({
+              user: data.user,
+              token,
+              isAuthenticated: true,
+              isSeller:
+                data.user.role === "seller" &&
+                data.user.approvalStatus.isSellerApproved,
+            });
+            return { success: true, isAuthenticated: true };
+          } else if (sellerToken) {
+            console.debug("Check seller auth request:", {
+              url: `${API_BASE_URL}/shop/getshop`,
+            });
+            const { data } = await axios.get(`${API_BASE_URL}/shop/getshop`, {
+              headers: { Authorization: `Bearer ${sellerToken}` },
+              withCredentials: true,
+            });
+            set({
+              seller: data.seller,
+              sellerToken,
+              isSeller: true,
+            });
+            return { success: true, isSeller: true };
+          } else {
+            console.debug("checkAuth: No tokens found");
+            return {
+              success: false,
+              isAuthenticated: false,
+              isSeller: false,
+            };
+          }
+        } catch (error) {
+          console.error(
+            "Check auth error:",
+            error.message,
+            error.response?.data
           );
-          return { success: false };
+          set({
+            isAuthenticated: false,
+            isSeller: false,
+            user: null,
+            token: null,
+            seller: null,
+            sellerToken: null,
+          });
+          localStorage.removeItem("token");
+          localStorage.removeItem("seller_token");
+          return {
+            success: false,
+            isAuthenticated: false,
+            isSeller: false,
+          };
         } finally {
           set({ isLoading: false });
         }
