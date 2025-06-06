@@ -47,15 +47,7 @@ export default function Header() {
                 </h1>
               </Link>
             </div>
-            {/* <Link href="/">
-              <Button color="inherit">Home</Button>
-            </Link>
-            <Link href="/products">
-              <Button color="inherit">Products</Button>
-            </Link>
-            <Link href="/events">
-              <Button color="inherit">Events</Button>
-            </Link> */}
+            
             <Link href="/social">
               <Button color="inherit">Social</Button>
             </Link>
