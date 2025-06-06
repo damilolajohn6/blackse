@@ -3,6 +3,7 @@ import styles from "@/styles/styles";
 // import ShopInfo from "@/components/Shop/ShopInfo";
 // import ShopProfileData from "@/components/Shop/ShopProfileData";
 
+
 const ShopHomepage = () => {
   return (
     <div>
