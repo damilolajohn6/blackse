@@ -956,7 +956,7 @@ const CourseCreationWizard = ({ courseId }) => {
                   Course Description (English)
                 </Typography>
                 <Editor
-                  apiKey="your-tinymce-api-key"
+                  apiKey="khsgpv7gbp874ds6d2u3pab16l0fareackakzba70jnyqedw"
                   value={field.value}
                   onEditorChange={(content) => field.onChange(content)}
                   init={{
