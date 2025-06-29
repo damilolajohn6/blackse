@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import useAdminStore from "@/stores/adminStore";
+import useAdminStore from "@/store/adminStore";
 import {
   Typography,
   Box,

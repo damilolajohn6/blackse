@@ -82,7 +82,7 @@ const useAdminStore = create((set) => ({
     }
   },
 
-  updateAdminProfile: async (data, router) => {
+  updateAdminProfile: async (data) => {
     set({ isLoading: true });
     try {
       const res = await axios.put(`${API_BASE_URL}/admin/update-admin`, data, {

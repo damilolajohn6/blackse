@@ -1150,89 +1150,22 @@ const CourseCreationWizard = ({ courseId }) => {
                 </Box>
               )}
             />
-<<<<<<< HEAD
-            <FormControl fullWidth margin="normal">
-              <InputLabel>Level</InputLabel>
-              <Controller
-                name="level"
-                control={control}
-                defaultValue="All Levels"
-                render={({ field }) => (
-                  <Select {...field}>
-                    <MenuItem value="Beginner">Beginner</MenuItem>
-                    <MenuItem value="Intermediate">Intermediate</MenuItem>
-                    <MenuItem value="Advanced">Advanced</MenuItem>
-                    <MenuItem value="All Levels">All Levels</MenuItem>
-                  </Select>
-=======
-          </Tooltip>
-          <TextField
-            fullWidth
-            label="Spanish Title (Optional)"
-            {...register("title.es", {
-              maxLength: {
-                value: 200,
-                message: "Title cannot exceed 200 characters",
-              },
-            })}
-            margin="normal"
-            error={!!errors.title?.es}
-            helperText={errors.title?.es?.message}
-          />
-          <TextField
-            fullWidth
-            label="French Title (Optional)"
-            {...register("title.fr", {
-              maxLength: {
-                value: 200,
-                message: "Title cannot exceed 200 characters",
-              },
-            })}
-            margin="normal"
-            error={!!errors.title?.fr}
-            helperText={errors.title?.fr?.message}
-          />
-          <Controller
-            name="description.en"
-            control={control}
-            rules={{
-              required: "English description is required",
-              minLength: {
-                value: 50,
-                message: "Description must be at least 50 characters",
-              },
-              maxLength: {
-                value: 5000,
-                message: "Description cannot exceed 5000 characters",
-              },
-            }}
-            render={({ field }) => (
-              <Box sx={{ mt: 2 }}>
-                <Typography variant="body2" gutterBottom>
-                  Course Description (English)
-                </Typography>
-                <Editor
-                  apiKey="khsgpv7gbp874ds6d2u3pab16l0fareackakzba70jnyqedw"
-                  value={field.value}
-                  onEditorChange={(content) => field.onChange(content)}
-                  init={{
-                    height: 300,
-                    menubar: false,
-                    plugins: ["advlist", "lists", "link", "image", "code"],
-                    toolbar:
-                      "undo redo | formatselect | bold italic | bullist numlist | removeformat",
-                    content_style:
-                      "body { font-family: Arial, sans-serif; font-size: 14px }",
-                  }}
-                />
-                {errors.description?.en && (
-                  <Typography color="error" variant="caption">
-                    {errors.description?.en.message}
-                  </Typography>
->>>>>>> d96b5b0cf02ff75f90d8567cf0e23828779a5332
-                )}
-              />
-            </FormControl>
+<FormControl fullWidth margin="normal">
+  <InputLabel>Level</InputLabel>
+  <Controller
+    name="level"
+    control={control}
+    defaultValue="All Levels"
+    render={({ field }) => (
+      <Select {...field}>
+        <MenuItem value="Beginner">Beginner</MenuItem>
+        <MenuItem value="Intermediate">Intermediate</MenuItem>
+        <MenuItem value="Advanced">Advanced</MenuItem>
+        <MenuItem value="All Levels">All Levels</MenuItem>
+      </Select>
+    )}
+  />
+</FormControl>
             <FormControl fullWidth margin="normal">
               <InputLabel>Language</InputLabel>
               <Controller
