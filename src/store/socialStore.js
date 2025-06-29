@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 import { create } from "zustand";
 import axios from "axios";
 import io from "socket.io-client";
@@ -42,7 +43,7 @@ const useSocialStore = create((set, get) => ({
     });
 
     socketInstance.on("connect_error", (error) => {
-      console.error("Socket connection error:", error);
+      console.error("Socket connection error:", error.message, error);
       toast.error(`Failed to connect to chat server: ${error.message}`);
     });
 
@@ -79,6 +80,7 @@ const useSocialStore = create((set, get) => ({
   fetchTimeline: async (token) => {
     if (!token) {
       console.warn("fetchTimeline: No token provided");
+      toast.error("Authentication token missing");
       return;
     }
     set({ isFetching: true });
@@ -87,22 +89,35 @@ const useSocialStore = create((set, get) => ({
         headers: { Authorization: `Bearer ${token}` },
         withCredentials: true,
       });
+
+      // Validate response data
+      if (!data || !Array.isArray(data.posts)) {
+        console.error("fetchTimeline: Invalid response data", data);
+        toast.error("Invalid timeline data received");
+        return;
+      }
+
       set((state) => ({
         mixedPosts: [
           ...state.mixedPosts.filter(
-            (p) => !data.posts.some((newP) => newP.post._id === p.post._id)
+            (p) => !data.posts.some((newP) => newP.post?._id === p.post?._id)
           ),
-          ...(data.posts || []).filter(
-            (p) => p.post && p.user && Array.isArray(p.post.comments)
+          ...data.posts.filter(
+            (p) =>
+              p.post && p.user && p.post._id && Array.isArray(p.post.comments)
           ),
         ].sort(
           (a, b) =>
-            new Date(b.post.createdAt).getTime() -
-            new Date(a.post.createdAt).getTime()
+            new Date(b.post.createdAt || 0).getTime() -
+            new Date(a.post.createdAt || 0).getTime()
         ),
       }));
     } catch (error) {
-      console.error("FETCH TIMELINE ERROR:", error.response?.data, error);
+      console.error("FETCH TIMELINE ERROR:", {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+      });
       toast.error(error.response?.data?.message || "Failed to fetch timeline");
     } finally {
       set({ isFetching: false });
@@ -112,6 +127,7 @@ const useSocialStore = create((set, get) => ({
   fetchRandomPosts: async (token) => {
     if (!token) {
       console.warn("fetchRandomPosts: No token provided");
+      toast.error("Authentication token missing");
       return;
     }
     set({ isFetching: true });
@@ -120,22 +136,35 @@ const useSocialStore = create((set, get) => ({
         headers: { Authorization: `Bearer ${token}` },
         withCredentials: true,
       });
+
+      // Validate response data
+      if (!data || !Array.isArray(data.posts)) {
+        console.error("fetchRandomPosts: Invalid response data", data);
+        toast.error("Invalid random posts data received");
+        return;
+      }
+
       set((state) => ({
         mixedPosts: [
           ...state.mixedPosts.filter(
-            (p) => !data.posts.some((newP) => newP.post._id === p.post._id)
+            (p) => !data.posts.some((newP) => newP.post?._id === p.post?._id)
           ),
-          ...(data.posts || []).filter(
-            (p) => p.post && p.user && Array.isArray(p.post.comments)
+          ...data.posts.filter(
+            (p) =>
+              p.post && p.user && p.post._id && Array.isArray(p.post.comments)
           ),
         ].sort(
           (a, b) =>
-            new Date(b.post.createdAt).getTime() -
-            new Date(a.post.createdAt).getTime()
+            new Date(b.post.createdAt || 0).getTime() -
+            new Date(a.post.createdAt || 0).getTime()
         ),
       }));
     } catch (error) {
-      console.error("FETCH RANDOM POSTS ERROR:", error.response?.data, error);
+      console.error("FETCH RANDOM POSTS ERROR:", {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+      });
       toast.error(
         error.response?.data?.message || "Failed to fetch random posts"
       );
@@ -147,6 +176,7 @@ const useSocialStore = create((set, get) => ({
   fetchUsers: async (token) => {
     if (!token) {
       console.warn("fetchUsers: No token provided");
+      toast.error("Authentication token missing");
       return;
     }
     try {
@@ -154,9 +184,21 @@ const useSocialStore = create((set, get) => ({
         headers: { Authorization: `Bearer ${token}` },
         withCredentials: true,
       });
-      set({ users: data.users || [] });
+
+      // Validate response data
+      if (!data || !Array.isArray(data.users)) {
+        console.error("fetchUsers: Invalid response data", data);
+        toast.error("Invalid users data received");
+        return;
+      }
+
+      set({ users: data.users });
     } catch (error) {
-      console.error("FETCH USERS ERROR:", error.response?.data, error);
+      console.error("FETCH USERS ERROR:", {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+      });
       toast.error(error.response?.data?.message || "Failed to fetch users");
     }
   },
@@ -177,12 +219,21 @@ const useSocialStore = create((set, get) => ({
       set({ postContent: "" });
       await get().fetchTimeline(token);
     } catch (error) {
-      console.error("CREATE POST ERROR:", error.response?.data, error);
+      console.error("CREATE POST ERROR:", {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+      });
       toast.error(error.response?.data?.message || "Failed to create post");
     }
   },
 
   followUser: async (userId, token) => {
+    if (!userId || !token) {
+      console.warn("followUser: Missing userId or token");
+      toast.error("Invalid user or authentication token");
+      return;
+    }
     try {
       const { data } = await axios.post(
         `${API_BASE_URL}/social/follow/${userId}`,
@@ -192,12 +243,21 @@ const useSocialStore = create((set, get) => ({
       toast.success(data.message);
       await get().fetchUsers(token);
     } catch (error) {
-      console.error("FOLLOW USER ERROR:", error.response?.data, error);
+      console.error("FOLLOW USER ERROR:", {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+      });
       toast.error(error.response?.data?.message || "Failed to follow user");
     }
   },
 
   unfollowUser: async (userId, token) => {
+    if (!userId || !token) {
+      console.warn("unfollowUser: Missing userId or token");
+      toast.error("Invalid user or authentication token");
+      return;
+    }
     try {
       const { data } = await axios.post(
         `${API_BASE_URL}/social/unfollow/${userId}`,
@@ -207,12 +267,21 @@ const useSocialStore = create((set, get) => ({
       toast.success(data.message);
       await get().fetchUsers(token);
     } catch (error) {
-      console.error("UNFOLLOW USER ERROR:", error.response?.data, error);
+      console.error("UNFOLLOW USER ERROR:", {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+      });
       toast.error(error.response?.data?.message || "Failed to unfollow user");
     }
   },
 
   likePost: async (postId, token) => {
+    if (!postId || !token) {
+      console.warn("likePost: Missing postId or token");
+      toast.error("Invalid post or authentication token");
+      return;
+    }
     try {
       const { data } = await axios.post(
         `${API_BASE_URL}/social/like-post/${postId}`,
@@ -222,12 +291,21 @@ const useSocialStore = create((set, get) => ({
       toast.success(data.message);
       await get().fetchTimeline(token);
     } catch (error) {
-      console.error("LIKE POST ERROR:", error.response?.data, error);
+      console.error("LIKE POST ERROR:", {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+      });
       toast.error(error.response?.data?.message || "Failed to like post");
     }
   },
 
   unlikePost: async (postId, token) => {
+    if (!postId || !token) {
+      console.warn("unlikePost: Missing postId or token");
+      toast.error("Invalid post or authentication token");
+      return;
+    }
     try {
       const { data } = await axios.post(
         `${API_BASE_URL}/social/unlike-post/${postId}`,
@@ -237,14 +315,19 @@ const useSocialStore = create((set, get) => ({
       toast.success(data.message);
       await get().fetchTimeline(token);
     } catch (error) {
-      console.error("UNLIKE POST ERROR:", error.response?.data, error);
+      console.error("UNLIKE POST ERROR:", {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+      });
       toast.error(error.response?.data?.message || "Failed to unlike post");
     }
   },
 
   commentPost: async (postId, token) => {
     const { commentContent } = get();
-    if (!commentContent[postId]) {
+    if (!postId || !token || !commentContent[postId]) {
+      console.warn("commentPost: Missing postId, token, or comment content");
       toast.error("Comment content is required");
       return;
     }
@@ -262,12 +345,21 @@ const useSocialStore = create((set, get) => ({
         ),
       }));
     } catch (error) {
-      console.error("COMMENT POST ERROR:", error.response?.data, error);
+      console.error("COMMENT POST ERROR:", {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+      });
       toast.error(error.response?.data?.message || "Failed to add comment");
     }
   },
 
   likeComment: async (postId, commentId, token) => {
+    if (!postId || !commentId || !token) {
+      console.warn("likeComment: Missing postId, commentId, or token");
+      toast.error("Invalid comment or authentication token");
+      return;
+    }
     try {
       const { data } = await axios.post(
         `${API_BASE_URL}/social/like-comment/${postId}/${commentId}`,
@@ -300,12 +392,21 @@ const useSocialStore = create((set, get) => ({
         ),
       }));
     } catch (error) {
-      console.error("LIKE COMMENT ERROR:", error.response?.data, error);
+      console.error("LIKE COMMENT ERROR:", {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+      });
       toast.error(error.response?.data?.message || "Failed to like comment");
     }
   },
 
   unlikeComment: async (postId, commentId, token) => {
+    if (!postId || !commentId || !token) {
+      console.warn("unlikeComment: Missing postId, commentId, or token");
+      toast.error("Invalid comment or authentication token");
+      return;
+    }
     try {
       const { data } = await axios.post(
         `${API_BASE_URL}/social/unlike-comment/${postId}/${commentId}`,
@@ -338,7 +439,11 @@ const useSocialStore = create((set, get) => ({
         ),
       }));
     } catch (error) {
-      console.error("UNLIKE COMMENT ERROR:", error.response?.data, error);
+      console.error("UNLIKE COMMENT ERROR:", {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+      });
       toast.error(error.response?.data?.message || "Failed to unlike comment");
     }
   },
@@ -346,7 +451,10 @@ const useSocialStore = create((set, get) => ({
   replyComment: async (postId, commentId, token) => {
     const { commentContent } = get();
     const replyKey = `reply_${postId}_${commentId}`;
-    if (!commentContent[replyKey]) {
+    if (!postId || !commentId || !token || !commentContent[replyKey]) {
+      console.warn(
+        "replyComment: Missing postId, commentId, token, or reply content"
+      );
       toast.error("Reply content is required");
       return;
     }
@@ -383,7 +491,11 @@ const useSocialStore = create((set, get) => ({
         ),
       }));
     } catch (error) {
-      console.error("REPLY COMMENT ERROR:", error.response?.data, error);
+      console.error("REPLY COMMENT ERROR:", {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+      });
       toast.error(error.response?.data?.message || "Failed to add reply");
     }
   },
@@ -391,6 +503,7 @@ const useSocialStore = create((set, get) => ({
   sendMessage: () => {
     const { recipientId, messageContent, socket } = get();
     if (!recipientId || !messageContent) {
+      console.warn("sendMessage: Missing recipientId or message content");
       toast.error("Recipient and message content are required");
       return;
     }
@@ -398,20 +511,37 @@ const useSocialStore = create((set, get) => ({
       socket.emit("sendMessage", { recipientId, content: messageContent });
       set({ messageContent: "" });
     } else {
+      console.warn("sendMessage: Socket not connected");
       toast.error("Socket not connected");
     }
   },
 
   fetchMessages: async (recipientId, token) => {
-    if (!recipientId) return;
+    if (!recipientId || !token) {
+      console.warn("fetchMessages: Missing recipientId or token");
+      toast.error("Invalid recipient or authentication token");
+      return;
+    }
     try {
       const { data } = await axios.get(
         `${API_BASE_URL}/social/messages/${recipientId}`,
         { headers: { Authorization: `Bearer ${token}` }, withCredentials: true }
       );
-      set({ messages: data.messages || [], recipientId });
+
+      // Validate response data
+      if (!data || !Array.isArray(data.messages)) {
+        console.error("fetchMessages: Invalid response data", data);
+        toast.error("Invalid messages data received");
+        return;
+      }
+
+      set({ messages: data.messages, recipientId });
     } catch (error) {
-      console.error("FETCH MESSAGES ERROR:", error.response?.data, error);
+      console.error("FETCH MESSAGES ERROR:", {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+      });
       toast.error(error.response?.data?.message || "Failed to fetch messages");
     }
   },

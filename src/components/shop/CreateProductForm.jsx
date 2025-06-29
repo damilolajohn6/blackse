@@ -37,6 +37,13 @@ const CreateProductForm = () => {
       isFreeShipping: false,
       cost: "",
     },
+    flashSale: {
+      isActive: false,
+      discountPrice: "",
+      startDate: "",
+      endDate: "",
+      stockLimit: "",
+    },
   };
 
   const [formData, setFormData] = useState(initialFormData);
@@ -49,19 +56,23 @@ const CreateProductForm = () => {
     price: "",
     stock: "",
   });
-
-  const categories = [
-    "electronics",
-    "clothing",
-    "home",
-    "books",
-    "toys",
-    "food",
-    "digital",
-    "other",
-  ];
+  const [categories, setCategories] = useState([]);
 
   useEffect(() => {
+    // Fetch categories
+    const fetchCategories = async () => {
+      try {
+        const { data } = await axios.get(
+          `${API_BASE_URL}/product/get-categories`
+        );
+        setCategories(data.categories);
+      } catch (error) {
+        console.error("Fetch categories error:", error.message);
+        toast.error("Failed to load categories");
+      }
+    };
+    fetchCategories();
+
     if (!isSeller || !seller?._id) {
       toast.error("Please login to your shop", { toastId: "auth-error" });
       router.push("/shop/login");
@@ -112,6 +123,19 @@ const CreateProductForm = () => {
               },
               isFreeShipping: product.shipping?.isFreeShipping || false,
               cost: product.shipping?.cost?.toString() || "",
+            },
+            flashSale: {
+              isActive: product.flashSale?.isActive || false,
+              discountPrice: product.flashSale?.discountPrice?.toString() || "",
+              startDate: product.flashSale?.startDate
+                ? new Date(product.flashSale.startDate)
+                    .toISOString()
+                    .slice(0, 16)
+                : "",
+              endDate: product.flashSale?.endDate
+                ? new Date(product.flashSale.endDate).toISOString().slice(0, 16)
+                : "",
+              stockLimit: product.flashSale?.stockLimit?.toString() || "",
             },
           });
 
@@ -167,6 +191,27 @@ const CreateProductForm = () => {
       newErrors.stock = "Stock cannot be negative";
     if (images.length === 0)
       newErrors.images = "At least one image is required";
+    if (
+      formData.flashSale.isActive &&
+      (!formData.flashSale.discountPrice ||
+        !formData.flashSale.startDate ||
+        !formData.flashSale.endDate ||
+        !formData.flashSale.stockLimit)
+    )
+      newErrors.flashSale = "All flash sale fields are required when active";
+    if (
+      formData.flashSale.discountPrice &&
+      Number(formData.flashSale.discountPrice) >= Number(formData.price)
+    )
+      newErrors.flashSaleDiscountPrice =
+        "Flash sale price must be less than regular price";
+    if (
+      formData.flashSale.startDate &&
+      formData.flashSale.endDate &&
+      new Date(formData.flashSale.startDate) >=
+        new Date(formData.flashSale.endDate)
+    )
+      newErrors.flashSaleDates = "End date must be after start date";
     return newErrors;
   };
 
@@ -188,6 +233,15 @@ const CreateProductForm = () => {
         shipping: {
           ...prev.shipping,
           dimensions: { ...prev.shipping.dimensions, [field]: value },
+        },
+      }));
+    } else if (name.includes("flashSale.")) {
+      const [, field] = name.split(".");
+      setFormData((prev) => ({
+        ...prev,
+        flashSale: {
+          ...prev.flashSale,
+          [field]: type === "checkbox" ? checked : value,
         },
       }));
     } else {
@@ -366,6 +420,21 @@ const CreateProductForm = () => {
             : undefined,
         },
         variations: variations.length > 0 ? variations : undefined,
+        flashSale: {
+          ...formData.flashSale,
+          discountPrice: formData.flashSale.discountPrice
+            ? Number(formData.flashSale.discountPrice)
+            : undefined,
+          stockLimit: formData.flashSale.stockLimit
+            ? Number(formData.flashSale.stockLimit)
+            : undefined,
+          startDate: formData.flashSale.startDate
+            ? new Date(formData.flashSale.startDate)
+            : undefined,
+          endDate: formData.flashSale.endDate
+            ? new Date(formData.flashSale.endDate)
+            : undefined,
+        },
       };
 
       if (isEditing) {
@@ -604,6 +673,108 @@ const CreateProductForm = () => {
               <p className="text-red-500 text-sm mt-1">{errors.stock}</p>
             )}
           </div>
+        </div>
+
+        {/* Flash Sale */}
+        <div className="border-t pt-4">
+          <h3 className="text-lg font-semibold text-blue-600 mb-4">
+            Flash Sale
+          </h3>
+          <label className="flex items-center mb-4">
+            <input
+              type="checkbox"
+              name="flashSale.isActive"
+              checked={formData.flashSale.isActive}
+              onChange={handleInputChange}
+              className="rounded border-gray-300 text-blue-600 shadow-sm focus:ring-blue-500"
+            />
+            <span className="ml-2 text-sm text-gray-700">
+              Enable Flash Sale
+            </span>
+          </label>
+          {formData.flashSale.isActive && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700">
+                  Flash Sale Price ($) *
+                </label>
+                <input
+                  type="number"
+                  name="flashSale.discountPrice"
+                  value={formData.flashSale.discountPrice}
+                  onChange={handleInputChange}
+                  min="0"
+                  step="0.01"
+                  className={`mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 ${
+                    errors.flashSaleDiscountPrice ? "border-red-500" : ""
+                  }`}
+                />
+                {errors.flashSaleDiscountPrice && (
+                  <p className="text-red-500 text-sm mt-1">
+                    {errors.flashSaleDiscountPrice}
+                  </p>
+                )}
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">
+                  Stock Limit *
+                </label>
+                <input
+                  type="number"
+                  name="flashSale.stockLimit"
+                  value={formData.flashSale.stockLimit}
+                  onChange={handleInputChange}
+                  min="0"
+                  className={`mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 ${
+                    errors.flashSale ? "border-red-500" : ""
+                  }`}
+                />
+                {errors.flashSale && (
+                  <p className="text-red-500 text-sm mt-1">
+                    {errors.flashSale}
+                  </p>
+                )}
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">
+                  Start Date *
+                </label>
+                <input
+                  type="datetime-local"
+                  name="flashSale.startDate"
+                  value={formData.flashSale.startDate}
+                  onChange={handleInputChange}
+                  className={`mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 ${
+                    errors.flashSale ? "border-red-500" : ""
+                  }`}
+                />
+                {errors.flashSale && (
+                  <p className="text-red-500 text-sm mt-1">
+                    {errors.flashSale}
+                  </p>
+                )}
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">
+                  End Date *
+                </label>
+                <input
+                  type="datetime-local"
+                  name="flashSale.endDate"
+                  value={formData.flashSale.endDate}
+                  onChange={handleInputChange}
+                  className={`mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 ${
+                    errors.flashSaleDates ? "border-red-500" : ""
+                  }`}
+                />
+                {errors.flashSaleDates && (
+                  <p className="text-red-500 text-sm mt-1">
+                    {errors.flashSaleDates}
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Images */}

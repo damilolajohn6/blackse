@@ -1,7 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 import useAuthStore from "@/store/authStore";
 import useSocialStore from "@/store/socialStore";
 import {
@@ -28,9 +27,10 @@ import {
   Comment,
   Reply,
 } from "@mui/icons-material";
+import { toast } from "react-toastify";
 
 const SocialDashboard = () => {
-  const { user, token, isAuthenticated, isLoading } = useAuthStore();
+  const { user, token } = useAuthStore();
   const {
     mixedPosts,
     users,
@@ -60,22 +60,9 @@ const SocialDashboard = () => {
     setRecipientId,
     initializeSocket,
   } = useSocialStore();
-  const router = useRouter();
-  const [authChecked, setAuthChecked] = useState(false);
 
   useEffect(() => {
-    console.log("Auth state:", { isLoading, isAuthenticated, user, token });
-    if (!isLoading) {
-      setAuthChecked(true);
-      if (!isAuthenticated) {
-        console.warn("Redirecting to login: User not authenticated");
-        router.push("/login");
-      }
-    }
-  }, [isAuthenticated, isLoading, router]);
-
-  useEffect(() => {
-    if (token && user && isAuthenticated) {
+    if (token && user) {
       console.log("Initializing socket and fetching data for user:", user._id);
       const cleanup = initializeSocket(token, user);
       fetchTimeline(token);
@@ -88,7 +75,6 @@ const SocialDashboard = () => {
   }, [
     token,
     user,
-    isAuthenticated,
     fetchTimeline,
     fetchRandomPosts,
     fetchUsers,
@@ -193,14 +179,6 @@ const SocialDashboard = () => {
       );
     });
   };
-
-  if (isLoading || !authChecked) {
-    return <div className="text-center py-12">Loading...</div>;
-  }
-
-  if (!user || !isAuthenticated) {
-    return null;
-  }
 
   return (
     <Box className="w-full p-6 md:p-8">

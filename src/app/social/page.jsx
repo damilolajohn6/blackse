@@ -1,25 +1,41 @@
-// SocialPage.jsx
 "use client";
 
 import Header from "@/components/Layout/Header";
 import Footer from "@/components/Footer";
 import SocialDashboard from "@/components/Social/SocialDashboard";
 import useAuthStore from "@/store/authStore";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 const SocialPage = () => {
-  const { isAuthenticated, isLoading } = useAuthStore();
+  const { isAuthenticated, isLoading, token, checkAuth } = useAuthStore();
   const router = useRouter();
+  const [authChecked, setAuthChecked] = useState(false);
 
   useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
-      console.warn("SocialPage: Redirecting to login");
-      router.push("/login");
-    }
-  }, [isAuthenticated, isLoading, router]);
+    const verifyAuth = async () => {
+      if (!isLoading && !authChecked) {
+        if (!token) {
+          console.warn("SocialPage: No token, redirecting to login");
+          router.push("/login");
+          return;
+        }
 
-  if (isLoading || !isAuthenticated) {
+        const { success } = await checkAuth();
+        if (!success || !isAuthenticated) {
+          console.warn(
+            "SocialPage: Invalid token or not authenticated, redirecting to login"
+          );
+          router.push("/login");
+        }
+        setAuthChecked(true);
+      }
+    };
+
+    verifyAuth();
+  }, [isAuthenticated, isLoading, token, checkAuth, router, authChecked]);
+
+  if (isLoading || !authChecked || !isAuthenticated) {
     return <div className="text-center py-12">Loading...</div>;
   }
 

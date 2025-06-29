@@ -5,22 +5,19 @@ import { useRouter, useParams } from "next/navigation";
 import Image from "next/image";
 import { toast } from "react-toastify";
 import useAuthStore from "@/store/authStore";
-import axios from "axios";
+import useProductStore from "@/store/productStore";
+import Link from "next/link";
 
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_SERVER || "http://localhost:8000/api/v2";
-
-export default function ProductDetailsPage() {
+const ProductDetailsPage = () => {
   const router = useRouter();
   const params = useParams();
   const productId = params.id;
-  const { seller, isSeller, sellerToken } = useAuthStore();
-  const [product, setProduct] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const { seller, isSeller, sellerToken } =
+    useAuthStore();
+  const { product, isLoading, error, fetchSingleProduct } = useProductStore();
 
   useEffect(() => {
-    if (!isSeller || !seller?._id) {
+    if (!isSeller ) {
       toast.error("Please log in to view product details", {
         toastId: "auth-error",
       });
@@ -30,25 +27,16 @@ export default function ProductDetailsPage() {
 
     if (!productId || !/^[0-9a-fA-F]{24}$/.test(productId)) {
       console.error("Invalid product ID", { productId });
-      setError("Invalid product ID");
       toast.error("Invalid product ID", { toastId: "fetch-error" });
-      setIsLoading(false);
       return;
     }
 
     const fetchProduct = async () => {
       try {
-        setIsLoading(true);
-        const { data } = await axios.get(
-          `${API_BASE_URL}/product/get-product/${productId}`,
-          {
-            withCredentials: true,
-            headers: {
-              Authorization: sellerToken ? `Bearer ${sellerToken}` : undefined,
-            },
-          }
+        await fetchSingleProduct(
+          productId,
+          isSeller
         );
-        setProduct(data.product);
       } catch (error) {
         console.error("Fetch product error:", {
           message: error.message,
@@ -56,26 +44,20 @@ export default function ProductDetailsPage() {
           data: error.response?.data,
           productId,
         });
-        setError(
-          error.response?.data?.message ||
-            `Failed to load product details (Status: ${
-              error.response?.status || "unknown"
-            })`
-        );
-        toast.error(
-          error.response?.data?.message ||
-            `Failed to load product details (Status: ${
-              error.response?.status || "unknown"
-            })`,
-          { toastId: "fetch-error" }
-        );
-      } finally {
-        setIsLoading(false);
+        toast.error(error.message || "Failed to load product details", {
+          toastId: "fetch-error",
+        });
       }
     };
 
     fetchProduct();
-  }, [seller, isSeller, sellerToken, productId, router]);
+  }, [
+    isSeller,
+    seller,
+    productId,
+    router,
+    fetchSingleProduct,
+  ]);
 
   if (isLoading) {
     return <p className="text-center text-gray-600 py-6">Loading...</p>;
@@ -154,21 +136,24 @@ export default function ProductDetailsPage() {
           </div>
           <div>
             <h2 className="text-lg font-semibold text-gray-700">Price</h2>
-            <p className="text-gray-600">${product.price.toFixed(2)}</p>
-          </div>
-          <div>
-            <h2 className="text-lg font-semibold text-gray-700">
-              Discount Price
-            </h2>
             <p className="text-gray-600">
-              {product.priceDiscount
-                ? `$${product.priceDiscount.toFixed(2)}`
-                : "N/A"}
+              {product.flashSale?.isActive && product.flashSale?.discountPrice
+                ? `$${product.flashSale.discountPrice.toFixed(2)}`
+                : `$${product.price.toFixed(2)}`}
+              {product.flashSale?.isActive && (
+                <span className="text-sm text-gray-500 line-through ml-2">
+                  ${product.price.toFixed(2)}
+                </span>
+              )}
             </p>
           </div>
           <div>
             <h2 className="text-lg font-semibold text-gray-700">Stock</h2>
-            <p className="text-gray-600">{product.stock}</p>
+            <p className="text-gray-600">
+              {product.flashSale?.isActive
+                ? product.flashSale.stockLimit
+                : product.stock}
+            </p>
           </div>
           <div>
             <h2 className="text-lg font-semibold text-gray-700">Tags</h2>
@@ -176,6 +161,16 @@ export default function ProductDetailsPage() {
               {product.tags?.length > 0 ? product.tags.join(", ") : "None"}
             </p>
           </div>
+          {product.flashSale?.isActive && (
+            <div>
+              <h2 className="text-lg font-semibold text-gray-700">
+                Flash Sale
+              </h2>
+              <p className="text-gray-600">
+                Ends: {new Date(product.flashSale.endDate).toLocaleString()}
+              </p>
+            </div>
+          )}
         </div>
 
         {/* Description */}
@@ -266,8 +261,18 @@ export default function ProductDetailsPage() {
           >
             Back to Products
           </button>
+          {isSeller && (
+            <Link
+              href={`/shop/products/edit/${product._id}`}
+              className="inline-flex items-center px-6 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
+            >
+              Edit Product
+            </Link>
+          )}
         </div>
       </div>
     </div>
   );
-}
+};
+
+export default ProductDetailsPage;

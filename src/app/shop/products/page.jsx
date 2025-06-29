@@ -1,3 +1,5 @@
+"use client";
+
 import ListProducts from "@/components/shop/ListProduct";
 import ShopDashboardSideBar from "@/components/shop/ShopDashboardSidebar";
 import React from "react";
