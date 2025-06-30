@@ -33,6 +33,7 @@ const useProductStore = create((set) => ({
         }
       );
       set((state) => ({
+        products: [...state.products, data.product],
         shopProducts: [...state.shopProducts, data.product],
         isLoading: false,
       }));
@@ -48,25 +49,32 @@ const useProductStore = create((set) => ({
         data: error.response?.data,
       });
       set({ isLoading: false, error: errorMessage });
-      throw new Error(errorMessage);
+      throw error;
     }
   },
 
   updateProduct: async (productId, productData, token) => {
     set({ isLoading: true, error: null });
     try {
+      if (!token) {
+        console.error("updateProduct: No token provided");
+        throw new Error("Authentication token missing");
+      }
       const { data } = await axios.put(
         `${API_BASE_URL}/product/update-product/${productId}`,
         productData,
         {
           withCredentials: true,
           headers: {
-            Authorization: token ? `Bearer ${token}` : undefined,
+            Authorization: `Bearer ${token}`,
             "Content-Type": "application/json",
           },
         }
       );
       set((state) => ({
+        products: state.products.map((p) =>
+          p._id === productId ? data.product : p
+        ),
         shopProducts: state.shopProducts.map((p) =>
           p._id === productId ? data.product : p
         ),
@@ -84,23 +92,28 @@ const useProductStore = create((set) => ({
         productId,
       });
       set({ isLoading: false, error: errorMessage });
-      throw new Error(errorMessage);
+      throw error;
     }
   },
 
   deleteProduct: async (productId, token) => {
     set({ isLoading: true, error: null });
     try {
+      if (!token) {
+        console.error("deleteProduct: No token provided");
+        throw new Error("Authentication token missing");
+      }
       const { data } = await axios.delete(
         `${API_BASE_URL}/product/delete-shop-product/${productId}`,
         {
           withCredentials: true,
           headers: {
-            Authorization: token ? `Bearer ${token}` : undefined,
+            Authorization: `Bearer ${token}`,
           },
         }
       );
       set((state) => ({
+        products: state.products.filter((p) => p._id !== productId),
         shopProducts: state.shopProducts.filter((p) => p._id !== productId),
         isLoading: false,
       }));
@@ -115,13 +128,17 @@ const useProductStore = create((set) => ({
         productId,
       });
       set({ isLoading: false, error: errorMessage });
-      throw new Error(errorMessage);
+      throw error;
     }
   },
 
   fetchShopProducts: async (shopId, token) => {
     set({ isLoading: true, error: null });
     try {
+      if (!shopId) {
+        console.error("fetchShopProducts: No shopId provided");
+        throw new Error("Shop ID is required");
+      }
       if (!token) {
         console.error("fetchShopProducts: No token provided");
         throw new Error("Authentication token missing");
@@ -135,7 +152,12 @@ const useProductStore = create((set) => ({
           },
         }
       );
-      set({ shopProducts: data.products || [], isLoading: false });
+      set({
+        products: data.products || [],
+        shopProducts: data.products || [],
+        isLoading: false,
+      });
+      return data.products;
     } catch (error) {
       const errorMessage =
         error.response?.data?.message ||
@@ -145,25 +167,31 @@ const useProductStore = create((set) => ({
         message: errorMessage,
         status: error.response?.status,
         data: error.response?.data,
+        shopId,
       });
       set({ isLoading: false, error: errorMessage });
-      throw new Error(errorMessage);
+      throw error;
     }
   },
 
   fetchSingleProduct: async (productId, token) => {
     set({ isLoading: true, error: null, product: null });
     try {
+      if (!token) {
+        console.error("fetchSingleProduct: No token provided");
+        throw new Error("Authentication token missing");
+      }
       const response = await axios.get(
         `${API_BASE_URL}/product/get-product/${productId}`,
         {
           withCredentials: true,
           headers: {
-            Authorization: token ? `Bearer ${token}` : undefined,
+            Authorization: `Bearer ${token}`,
           },
         }
       );
       set({ product: response.data.product, isLoading: false });
+      return response.data.product;
     } catch (error) {
       const errorMessage =
         error.response?.data?.message || "Failed to fetch product";
@@ -171,26 +199,31 @@ const useProductStore = create((set) => ({
         message: errorMessage,
         status: error.response?.status,
         data: error.response?.data,
+        productId,
       });
       set({ isLoading: false, error: errorMessage });
-      throw new Error(errorMessage);
+      throw error;
     }
   },
 
   fetchProductsByCategory: async (shopId, category, token) => {
     set({ isLoading: true, error: null });
     try {
+      if (!token) {
+        console.error("fetchProductsByCategory: No token provided");
+        throw new Error("Authentication token missing");
+      }
       const { data } = await axios.get(
         `${API_BASE_URL}/product/get-shop-products-by-category/${shopId}/${category}`,
         {
           withCredentials: true,
           headers: {
-            Authorization: token ? `Bearer ${token}` : undefined,
+            Authorization: `Bearer ${token}`,
           },
         }
       );
       set({ categoryProducts: data.products || [], isLoading: false });
-      return data.products; // Optional: return the data if needed
+      return data.products;
     } catch (error) {
       const errorMessage =
         error.response?.data?.message ||
@@ -204,23 +237,28 @@ const useProductStore = create((set) => ({
         category,
       });
       set({ isLoading: false, error: errorMessage });
-      throw new Error(errorMessage);
+      throw error;
     }
   },
 
   fetchFlashSaleProducts: async (token) => {
     set({ isLoading: true, error: null });
     try {
+      if (!token) {
+        console.error("fetchFlashSaleProducts: No token provided");
+        throw new Error("Authentication token missing");
+      }
       const { data } = await axios.get(
         `${API_BASE_URL}/product/get-flash-sale-products`,
         {
           withCredentials: true,
           headers: {
-            Authorization: token ? `Bearer ${token}` : undefined,
+            Authorization: `Bearer ${token}`,
           },
         }
       );
       set({ flashSaleProducts: data.products || [], isLoading: false });
+      return data.products;
     } catch (error) {
       const errorMessage =
         error.response?.data?.message ||
@@ -232,7 +270,7 @@ const useProductStore = create((set) => ({
         data: error.response?.data,
       });
       set({ isLoading: false, error: errorMessage });
-      throw new Error(errorMessage);
+      throw error;
     }
   },
 
@@ -255,25 +293,32 @@ const useProductStore = create((set) => ({
         data: error.response?.data,
       });
       set({ isLoading: false, error: errorMessage });
-      throw new Error(errorMessage);
+      throw error;
     }
   },
 
   addFlashSale: async (productId, flashSaleData, token) => {
     set({ isLoading: true, error: null });
     try {
+      if (!token) {
+        console.error("addFlashSale: No token provided");
+        throw new Error("Authentication token missing");
+      }
       const { data } = await axios.post(
         `${API_BASE_URL}/product/add-flash-sale/${productId}`,
         flashSaleData,
         {
           withCredentials: true,
           headers: {
-            Authorization: token ? `Bearer ${token}` : undefined,
+            Authorization: `Bearer ${token}`,
             "Content-Type": "application/json",
           },
         }
       );
       set((state) => ({
+        products: state.products.map((p) =>
+          p._id === productId ? data.product : p
+        ),
         shopProducts: state.shopProducts.map((p) =>
           p._id === productId ? data.product : p
         ),
@@ -290,24 +335,31 @@ const useProductStore = create((set) => ({
         productId,
       });
       set({ isLoading: false, error: errorMessage });
-      throw new Error(errorMessage);
+      throw error;
     }
   },
 
   removeFlashSale: async (productId, token) => {
     set({ isLoading: true, error: null });
     try {
+      if (!token) {
+        console.error("removeFlashSale: No token provided");
+        throw new Error("Authentication token missing");
+      }
       const { data } = await axios.post(
         `${API_BASE_URL}/product/remove-flash-sale/${productId}`,
         {},
         {
           withCredentials: true,
           headers: {
-            Authorization: token ? `Bearer ${token}` : undefined,
+            Authorization: `Bearer ${token}`,
           },
         }
       );
       set((state) => ({
+        products: state.products.map((p) =>
+          p._id === productId ? data.product : p
+        ),
         shopProducts: state.shopProducts.map((p) =>
           p._id === productId ? data.product : p
         ),
@@ -324,7 +376,7 @@ const useProductStore = create((set) => ({
         productId,
       });
       set({ isLoading: false, error: errorMessage });
-      throw new Error(errorMessage);
+      throw error;
     }
   },
 }));

@@ -401,9 +401,10 @@ const useAuthStore = create(
       loadShop: async () => {
         set({ isLoading: true });
         try {
-          const currentToken = get().sellerToken;
+          const currentToken =
+            get().sellerToken || localStorage.getItem("seller_token");
           if (!currentToken) {
-            console.warn("loadShop: No sellerToken in store");
+            console.warn("loadShop: No sellerToken in store or localStorage");
             set({ seller: null, sellerToken: null, isSeller: false });
             return { success: false, message: "No seller token available" };
           }
@@ -608,14 +609,10 @@ const useAuthStore = create(
           console.debug("Logout request:", {
             user: `${API_BASE_URL}/user/logout`,
             shop: `${API_BASE_URL}/shop/logout`,
-            instructor: `${API_BASE_URL}/instructor/instructor-logout`,
           });
           await Promise.all([
             axios.get(`${API_BASE_URL}/user/logout`, { withCredentials: true }),
             axios.get(`${API_BASE_URL}/shop/logout`, { withCredentials: true }),
-            axios.get(`${API_BASE_URL}/instructor/instructor-logout`, {
-              withCredentials: true,
-            }),
           ]);
           set({
             user: null,
@@ -627,7 +624,6 @@ const useAuthStore = create(
           });
           localStorage.removeItem("token");
           localStorage.removeItem("seller_token");
-          localStorage.removeItem("instructor_token");
           toast.success("Log out successful!");
           router.push("/login");
           return { success: true };

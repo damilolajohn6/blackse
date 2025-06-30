@@ -17,7 +17,6 @@ import {
   sortableKeyboardCoordinates,
   verticalListSortingStrategy,
   useSortable,
-  arrayMove,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { v4 as uuidv4 } from "uuid";
@@ -111,30 +110,32 @@ const SortableLecture = React.memo(
     const handleVideoChange = useCallback(
       async (e) => {
         const file = e.target.files[0];
-        if (file) {
-          if (file.size > 2 * 1024 * 1024 * 1024) {
-            toast.error("Video file size cannot exceed 2GB");
-            return;
-          }
-          setValue(
-            `content[${sectionIndex}].lectures[${index}].videoFile`,
-            file
-          );
-          setValue(
-            `content[${sectionIndex}].lectures[${index}].videoUrl`,
-            URL.createObjectURL(file)
-          );
-          try {
-            const timeline = await generateTimeline(file);
-            setValue(
-              `content[${sectionIndex}].lectures[${index}].timeline`,
-              timeline
-            );
-            await onVideoUpload(sectionIndex, index, file);
-          } catch (error) {
-            toast.error("Failed to process video timeline");
-            console.error("Video timeline error:", error);
-          }
+        if (!file) return;
+
+        // Validate file type and size
+        const validTypes = ["video/mp4", "video/mpeg", "video/webm"];
+        if (!validTypes.includes(file.type)) {
+          toast.error("Please upload a valid video file (MP4, MPEG, or WebM)");
+          return;
+        }
+        if (file.size > 2 * 1024 * 1024 * 1024) {
+          toast.error("Video file size cannot exceed 2GB");
+          return;
+        }
+
+        const tempUrl = URL.createObjectURL(file);
+        setValue(`content[${sectionIndex}].lectures[${index}].videoFile`, file);
+        setValue(`content[${sectionIndex}].lectures[${index}].videoUrl`, tempUrl);
+
+        try {
+          const timeline = await generateTimeline(file);
+          setValue(`content[${sectionIndex}].lectures[${index}].timeline`, timeline);
+          await onVideoUpload(sectionIndex, index, file);
+        } catch (error) {
+          toast.error("Failed to process video timeline");
+          console.error("Video timeline error:", error);
+        } finally {
+          URL.revokeObjectURL(tempUrl); // Clean up temporary URL
         }
       },
       [sectionIndex, index, setValue, onVideoUpload, generateTimeline]
@@ -234,7 +235,7 @@ const SortableLecture = React.memo(
         <input
           type="file"
           id={`video-upload-${key}`}
-          accept="video/*"
+          accept="video/mp4,video/mpeg,video/webm"
           style={{ display: "none" }}
           onChange={handleVideoChange}
         />
@@ -339,7 +340,6 @@ const SortableSection = React.memo(
           const newIndex = lectures.findIndex((item) => item.id === over.id);
           if (oldIndex !== -1 && newIndex !== -1) {
             move(oldIndex, newIndex);
-            // Update order fields after moving
             lectures.forEach((_, idx) => {
               setValue(`content[${index}].lectures[${idx}].order`, idx + 1);
             });
@@ -665,12 +665,12 @@ const CourseCreationWizard = ({ courseId }) => {
             },
             content: course.content?.map((section, idx) => ({
               id: section._id || uuidv4(),
-              sectionTitle: section.sectionTitle,
+              sectionTitle: section.sectionTitle || "",
               order: section.order || idx + 1,
               lectures:
                 section.lectures?.map((lecture, lecIdx) => ({
                   id: lecture._id || uuidv4(),
-                  title: lecture.title,
+                  title: lecture.title || "",
                   description: lecture.description || "",
                   videoFile: null,
                   videoUrl: lecture.video?.url || "",
@@ -692,18 +692,19 @@ const CourseCreationWizard = ({ courseId }) => {
     loadCourse();
   }, [courseId, reset]);
 
-  useEffect(() => {
-    const updateChecklist = () => {
-      const totalDuration = (watchedFields.content || []).reduce(
-        (total, section) => {
-          const lecturesDuration = (section.lectures || []).reduce(
-            (sum, lecture) => sum + (lecture.duration || 0),
-            0
-          );
-          return total + lecturesDuration;
-        },
-        0
-      );
+  const updateChecklist = useCallback(() => {
+    try {
+      const content = watchedFields.content || [];
+      const totalDuration = content.reduce((total, section) => {
+        const lectures = Array.isArray(section?.lectures)
+          ? section.lectures
+          : [];
+        const lecturesDuration = lectures.reduce(
+          (sum, lecture) => sum + (Number(lecture?.duration) || 0),
+          0
+        );
+        return total + lecturesDuration;
+      }, 0);
 
       setPublishChecklist({
         hasTitle: !!watchedFields.title?.trim(),
@@ -715,28 +716,41 @@ const CourseCreationWizard = ({ courseId }) => {
           cat?.name?.trim()
         ),
         hasThumbnail: !!watchedFields.thumbnail?.url,
-        hasContent: (watchedFields.content || []).some(
+        hasContent: content.some(
           (section) =>
-            section?.sectionTitle && (section.lectures?.length || 0) > 0
+            section?.sectionTitle?.trim() &&
+            Array.isArray(section?.lectures) &&
+            section.lectures.length > 0
         ),
         hasDuration: totalDuration >= 60,
       });
-    };
+    } catch (error) {
+      console.error("Error updating publish checklist:", error);
+      toast.error("Error updating course checklist");
+    }
+  }, [
+    watchedFields.title,
+    watchedFields.description,
+    watchedFields.learningObjectives,
+    watchedFields.categories,
+    watchedFields.thumbnail?.url,
+    watchedFields.content,
+  ]);
 
+  useEffect(() => {
     updateChecklist();
-  }, [watchedFields]);
+  }, [updateChecklist]);
 
   const generateTimeline = useCallback(async (file) => {
     try {
-      // Simulating video analysis for timeline generation
-      const duration = await new Promise((resolve) => {
+      const duration = await new Promise((resolve, reject) => {
         const video = document.createElement("video");
         video.preload = "metadata";
         video.onloadedmetadata = () => resolve(video.duration);
+        video.onerror = () => reject(new Error("Failed to load video metadata"));
         video.src = URL.createObjectURL(file);
       });
 
-      // Generate simple timeline points
       const timeline = [];
       const interval = duration / 4;
       for (let i = 0; i < 4; i++) {
@@ -756,41 +770,68 @@ const CourseCreationWizard = ({ courseId }) => {
   }, []);
 
   const uploadMedia = useCallback(
-    async (file, folder, resourceType, onProgress, options = {}) => {
-      if (
-        !process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME ||
-        !process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET
-      ) {
-        throw new Error("Cloudinary configuration is missing");
-      }
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append(
-        "upload_preset",
-        process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET
-      );
-      formData.append(
-        "cloud_name",
-        process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME
-      );
-      formData.append("folder", folder);
-      if (options.transformations) {
-        formData.append(
-          "transformation",
-          JSON.stringify(options.transformations)
-        );
+    async (file, folder, resourceType, onProgress, options = {}, retries = 2) => {
+      const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
+      const uploadPreset = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET;
+
+      if (!cloudName || !uploadPreset) {
+        console.error("Cloudinary configuration missing:", {
+          cloudName,
+          uploadPreset,
+        });
+        throw new Error("Cloudinary configuration is missing. Please contact support.");
       }
 
-      try {
-        const res = await axios.post(
-          `https://api.cloudinary.com/v1_1/${process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME}/${resourceType}/upload`,
-          formData,
-          { onUploadProgress: onProgress }
-        );
-        return res.data;
-      } catch (error) {
-        console.error(`Failed to upload ${resourceType}:`, error);
-        throw error;
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("upload_preset", uploadPreset);
+      formData.append("cloud_name", cloudName);
+      formData.append("folder", folder);
+      if (options.transformations) {
+        formData.append("transformation", JSON.stringify(options.transformations));
+      }
+
+      let attempt = 0;
+      while (attempt <= retries) {
+        try {
+          const res = await axios.post(
+            `https://api.cloudinary.com/v1_1/${cloudName}/${resourceType}/upload`,
+            formData,
+            {
+              onUploadProgress: onProgress,
+              timeout: 60000, // Set timeout to 60 seconds
+            }
+          );
+          return res.data;
+        } catch (error) {
+          attempt++;
+          console.error(`Upload attempt ${attempt} failed:`, error);
+
+          if (error.response) {
+            // Handle specific Cloudinary errors
+            if (error.response.status === 400) {
+              throw new Error("Invalid file format or request. Please check the file and try again.");
+            } else if (error.response.status === 429 || error.response.status === 503) {
+              if (attempt <= retries) {
+                console.warn(`Retrying upload... Attempt ${attempt + 1}`);
+                await new Promise((resolve) => setTimeout(resolve, 1000 * attempt)); // Exponential backoff
+                continue;
+              }
+            } else if (error.response.status === 401) {
+              throw new Error("Authentication error with Cloudinary. Please contact support.");
+            }
+          } else if (error.code === "ECONNABORTED") {
+            throw new Error("Upload timed out. Please check your network and try again.");
+          } else if (error.code === "ERR_NETWORK") {
+            throw new Error("Network error. Please check your internet connection and try again.");
+          }
+
+          if (attempt > retries) {
+            throw new Error(
+              error.response?.data?.message || `Failed to upload ${resourceType}. Please try again.`
+            );
+          }
+        }
       }
     },
     []
@@ -798,35 +839,62 @@ const CourseCreationWizard = ({ courseId }) => {
 
   const handleThumbnailUpload = useCallback(
     async (file) => {
+      if (!file) return;
+
+      // Validate file type and size
+      const validTypes = ["image/jpeg", "image/png"];
+      if (!validTypes.includes(file.type)) {
+        toast.error("Please upload a valid image file (JPEG or PNG)");
+        return;
+      }
       if (file.size > 5 * 1024 * 1024) {
         toast.error("Thumbnail file size cannot exceed 5MB");
         return;
       }
+
       setUploadingMedia((prev) => ({ ...prev, thumbnail: true }));
       try {
+        const tempUrl = URL.createObjectURL(file);
+        setValue("thumbnail.url", tempUrl);
+
         const result = await uploadMedia(file, "course_thumbnails", "image");
         setValue("thumbnail.url", result.secure_url);
         setValue("thumbnail.file", null);
         trigger("thumbnail");
-        toast.success("Thumbnail uploaded");
+        toast.success("Thumbnail uploaded successfully");
       } catch (error) {
         console.error("Thumbnail upload error:", error);
-        toast.error("Failed to upload thumbnail");
+        toast.error(error.message || "Failed to upload thumbnail");
       } finally {
         setUploadingMedia((prev) => ({ ...prev, thumbnail: false }));
+        if (watch("thumbnail.url").startsWith("blob:")) {
+          URL.revokeObjectURL(watch("thumbnail.url"));
+        }
       }
     },
-    [setValue, trigger, uploadMedia]
+    [setValue, trigger, uploadMedia, watch]
   );
 
   const handlePreviewVideoUpload = useCallback(
     async (file) => {
+      if (!file) return;
+
+      // Validate file type and size
+      const validTypes = ["video/mp4", "video/mpeg", "video/webm"];
+      if (!validTypes.includes(file.type)) {
+        toast.error("Please upload a valid video file (MP4, MPEG, or WebM)");
+        return;
+      }
       if (file.size > 200 * 1024 * 1024) {
         toast.error("Preview video file size cannot exceed 200MB");
         return;
       }
+
       setUploadingMedia((prev) => ({ ...prev, previewVideo: true }));
       try {
+        const tempUrl = URL.createObjectURL(file);
+        setValue("previewVideo.url", tempUrl);
+
         const result = await uploadMedia(
           file,
           "course_preview_videos",
@@ -834,27 +902,45 @@ const CourseCreationWizard = ({ courseId }) => {
           null,
           { transformations: [{ duration: 300, quality: "auto" }] }
         );
+
         if (result.duration > 300) {
           toast.error("Preview video cannot exceed 5 minutes");
           return;
         }
+
         setValue("previewVideo.url", result.secure_url);
         setValue("previewVideo.duration", result.duration);
         setValue("previewVideo.file", null);
         trigger("previewVideo");
-        toast.success("Preview video uploaded");
+        toast.success("Preview video uploaded successfully");
       } catch (error) {
         console.error("Preview video upload error:", error);
-        toast.error("Failed to upload preview video");
+        toast.error(error.message || "Failed to upload preview video");
       } finally {
         setUploadingMedia((prev) => ({ ...prev, previewVideo: false }));
+        if (watch("previewVideo.url").startsWith("blob:")) {
+          URL.revokeObjectURL(watch("previewVideo.url"));
+        }
       }
     },
-    [setValue, trigger, uploadMedia]
+    [setValue, trigger, uploadMedia, watch]
   );
 
   const handleVideoUpload = useCallback(
     async (sectionIndex, lectureIndex, file) => {
+      if (!file) return;
+
+      // Validate file type and size
+      const validTypes = ["video/mp4", "video/mpeg", "video/webm"];
+      if (!validTypes.includes(file.type)) {
+        toast.error("Please upload a valid video file (MP4, MPEG, or WebM)");
+        return;
+      }
+      if (file.size > 2 * 1024 * 1024 * 1024) {
+        toast.error("Lecture video file size cannot exceed 2GB");
+        return;
+      }
+
       const key = `${sectionIndex}-${lectureIndex}`;
       setUploadProgress((prev) => ({ ...prev, [key]: 0 }));
       try {
@@ -873,6 +959,7 @@ const CourseCreationWizard = ({ courseId }) => {
           },
           { transformations: [{ quality: "auto:low", fetch_format: "mp4" }] }
         );
+
         setValue(
           `content[${sectionIndex}].lectures[${lectureIndex}].videoUrl`,
           result.secure_url
@@ -885,17 +972,27 @@ const CourseCreationWizard = ({ courseId }) => {
           `content[${sectionIndex}].lectures[${lectureIndex}].videoFile`,
           null
         );
-        toast.success(`Lecture video uploaded`);
+        toast.success("Lecture video uploaded successfully");
         return result;
       } catch (error) {
         console.error("Video upload error:", error);
-        toast.error(`Failed to upload lecture video`);
+        toast.error(error.message || "Failed to upload lecture video");
         throw error;
       } finally {
-        setUploadProgress((prev) => ({ ...prev, [key]: 100 }));
+        setUploadProgress((prev) => {
+          const newProgress = { ...prev };
+          delete newProgress[key]; // Clean up progress state
+          return newProgress;
+        });
+        const videoUrl = watch(
+          `content[${sectionIndex}].lectures[${lectureIndex}].videoUrl`
+        );
+        if (videoUrl && videoUrl.startsWith("blob:")) {
+          URL.revokeObjectURL(videoUrl);
+        }
       }
     },
-    [courseId, setValue, uploadMedia]
+    [courseId, setValue, uploadMedia, watch]
   );
 
   const handleSectionDragEnd = useCallback(
@@ -906,7 +1003,6 @@ const CourseCreationWizard = ({ courseId }) => {
         const newIndex = content.findIndex((item) => item.id === over.id);
         if (oldIndex !== -1 && newIndex !== -1) {
           moveSection(oldIndex, newIndex);
-          // Update order fields after moving
           content.forEach((_, idx) => {
             setValue(`content[${idx}].order`, idx + 1);
           });
@@ -1150,22 +1246,22 @@ const CourseCreationWizard = ({ courseId }) => {
                 </Box>
               )}
             />
-<FormControl fullWidth margin="normal">
-  <InputLabel>Level</InputLabel>
-  <Controller
-    name="level"
-    control={control}
-    defaultValue="All Levels"
-    render={({ field }) => (
-      <Select {...field}>
-        <MenuItem value="Beginner">Beginner</MenuItem>
-        <MenuItem value="Intermediate">Intermediate</MenuItem>
-        <MenuItem value="Advanced">Advanced</MenuItem>
-        <MenuItem value="All Levels">All Levels</MenuItem>
-      </Select>
-    )}
-  />
-</FormControl>
+            <FormControl fullWidth margin="normal">
+              <InputLabel>Level</InputLabel>
+              <Controller
+                name="level"
+                control={control}
+                defaultValue="All Levels"
+                render={({ field }) => (
+                  <Select {...field}>
+                    <MenuItem value="Beginner">Beginner</MenuItem>
+                    <MenuItem value="Intermediate">Intermediate</MenuItem>
+                    <MenuItem value="Advanced">Advanced</MenuItem>
+                    <MenuItem value="All Levels">All Levels</MenuItem>
+                  </Select>
+                )}
+              />
+            </FormControl>
             <FormControl fullWidth margin="normal">
               <InputLabel>Language</InputLabel>
               <Controller
@@ -1484,7 +1580,7 @@ const CourseCreationWizard = ({ courseId }) => {
             <input
               type="file"
               id="thumbnail-upload"
-              accept="image/*"
+              accept="image/jpeg,image/png"
               style={{ display: "none" }}
               onChange={(e) => {
                 const file = e.target.files[0];
@@ -1519,7 +1615,7 @@ const CourseCreationWizard = ({ courseId }) => {
             <input
               type="file"
               id="preview-video"
-              accept="video/*"
+              accept="video/mp4,video/mpeg,video/webm"
               style={{ display: "none" }}
               onChange={(e) => {
                 const file = e.target.files[0];

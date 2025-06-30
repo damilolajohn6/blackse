@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import useAdminStore from "@/store/adminStore";
+import useAdminStore from "@/stores/adminStore";
 import { AppBar, Toolbar, Typography, Button } from "@mui/material";
 
 export default function AdminHeader() {

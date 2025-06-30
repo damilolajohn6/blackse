@@ -12,18 +12,40 @@ const ProductDetailsPage = () => {
   const router = useRouter();
   const params = useParams();
   const productId = params.id;
-  const { seller, isSeller, sellerToken } =
-    useAuthStore();
+  const { seller, isSeller, sellerToken, checkAuth, loadShop } = useAuthStore();
   const { product, isLoading, error, fetchSingleProduct } = useProductStore();
+  const [authChecked, setAuthChecked] = useState(false);
 
   useEffect(() => {
-    if (!isSeller ) {
-      toast.error("Please log in to view product details", {
-        toastId: "auth-error",
-      });
-      router.push("/shop/login");
-      return;
-    }
+    const validateAuth = async () => {
+      if (!isSeller || !sellerToken) {
+        try {
+          const { success } = await checkAuth();
+          if (!success) {
+            toast.error("Please log in to view product details", {
+              toastId: "auth-error",
+            });
+            router.push("/shop/login");
+            return;
+          }
+          await loadShop();
+        } catch (err) {
+          console.error("Auth check failed:", err);
+          toast.error("Authentication failed. Please log in again.", {
+            toastId: "auth-error",
+          });
+          router.push("/shop/login");
+          return;
+        }
+      }
+      setAuthChecked(true);
+    };
+
+    validateAuth();
+  }, [isSeller, sellerToken, checkAuth, loadShop, router]);
+
+  useEffect(() => {
+    if (!authChecked) return;
 
     if (!productId || !/^[0-9a-fA-F]{24}$/.test(productId)) {
       console.error("Invalid product ID", { productId });
@@ -33,10 +55,7 @@ const ProductDetailsPage = () => {
 
     const fetchProduct = async () => {
       try {
-        await fetchSingleProduct(
-          productId,
-          isSeller
-        );
+        await fetchSingleProduct(productId, sellerToken);
       } catch (error) {
         console.error("Fetch product error:", {
           message: error.message,
@@ -44,22 +63,23 @@ const ProductDetailsPage = () => {
           data: error.response?.data,
           productId,
         });
-        toast.error(error.message || "Failed to load product details", {
-          toastId: "fetch-error",
-        });
+        if (error.response?.status === 401 || error.response?.status === 403) {
+          toast.error("Session expired. Please log in again.", {
+            toastId: "auth-error",
+          });
+          router.push("/shop/login");
+        } else {
+          toast.error(error.message || "Failed to load product details", {
+            toastId: "fetch-error",
+          });
+        }
       }
     };
 
     fetchProduct();
-  }, [
-    isSeller,
-    seller,
-    productId,
-    router,
-    fetchSingleProduct,
-  ]);
+  }, [authChecked, productId, sellerToken, fetchSingleProduct, router]);
 
-  if (isLoading) {
+  if (!authChecked || isLoading) {
     return <p className="text-center text-gray-600 py-6">Loading...</p>;
   }
 

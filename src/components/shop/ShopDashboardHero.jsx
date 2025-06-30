@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import useAuthStore from "@/store/authStore";
@@ -18,54 +18,129 @@ import { DataGrid } from "@mui/x-data-grid";
 import { FaChartLine } from "react-icons/fa";
 
 const ShopDashboardHero = () => {
-  const { seller, isSeller, sellerToken } = useAuthStore();
-  const { orders, stats, isLoading, error, fetchSellerOrders, fetchShopStats } =
-    useOrderStore();
-  const { products, fetchShopProducts } = useProductStore();
+  const { seller, isSeller, sellerToken, checkAuth, loadShop } = useAuthStore();
+  const {
+    orders,
+    stats,
+    isLoading: ordersLoading,
+    error: ordersError,
+    fetchSellerOrders,
+    fetchShopStats,
+  } = useOrderStore();
+  const {
+    products,
+    isLoading: productsLoading,
+    error: productsError,
+    fetchShopProducts,
+  } = useProductStore();
   const router = useRouter();
-
-  const fetchData = async () => {
-    try {
-      await Promise.all([
-        fetchSellerOrders(seller._id, sellerToken, { page: 1, limit: 5 }),
-        fetchShopProducts(seller._id, sellerToken),
-        fetchShopStats(seller._id, sellerToken),
-      ]);
-    } catch (error) {
-      console.error("Dashboard data error:", {
-        message: error.message,
-        status: error.response?.status,
-        data: error.response?.data,
-      });
-      toast.error(error.message || "Failed to load dashboard data", {
-        toastId: "fetch-error",
-      });
-    }
-  };
+  const [authChecked, setAuthChecked] = useState(false);
 
   useEffect(() => {
-    if (!isSeller || !seller?._id) {
-      toast.error("Please log in to view dashboard", { toastId: "auth-error" });
-      router.push("/shop/login");
-      return;
-    }
+    const validateAuth = async () => {
+      if (!isSeller || !seller?._id || !sellerToken) {
+        try {
+          const { success } = await checkAuth();
+          if (!success) {
+            toast.error("Please log in to view dashboard", {
+              toastId: "auth-error",
+            });
+            router.push("/shop/login");
+            return;
+          }
+          await loadShop();
+        } catch (err) {
+          console.error("Auth check failed:", err);
+          toast.error("Authentication failed. Please log in again.", {
+            toastId: "auth-error",
+          });
+          router.push("/shop/login");
+          return;
+        }
+      }
+      setAuthChecked(true);
+    };
+
+    validateAuth();
+  }, [isSeller, seller, sellerToken, checkAuth, loadShop, router]);
+
+  useEffect(() => {
+    if (!authChecked || !seller?._id || !sellerToken) return;
+
+    const fetchData = async () => {
+      try {
+        await Promise.all([
+          fetchSellerOrders(seller._id, sellerToken, { page: 1, limit: 5 }),
+          fetchShopProducts(seller._id, sellerToken),
+          fetchShopStats(seller._id, sellerToken),
+        ]);
+      } catch (error) {
+        console.error("Dashboard data error:", {
+          message: error.message,
+          status: error.response?.status,
+          data: error.response?.data,
+        });
+        if (error.response?.status === 401 || error.response?.status === 403) {
+          toast.error("Session expired. Please log in again.", {
+            toastId: "auth-error",
+          });
+          router.push("/shop/login");
+        } else {
+          toast.error(error.message || "Failed to load dashboard data", {
+            toastId: "fetch-error",
+          });
+        }
+      }
+    };
 
     fetchData();
   }, [
+    authChecked,
     seller?._id,
-    isSeller,
     sellerToken,
-    router,
     fetchSellerOrders,
     fetchShopProducts,
     fetchShopStats,
+    router,
   ]);
 
+  if (!authChecked) {
+    return (
+      <div className="text-center text-gray-600 flex items-center justify-center h-64">
+        <AiOutlineShoppingCart className="animate-spin h-8 w-8 mr-2 text-blue-600" />
+        Checking authentication...
+      </div>
+    );
+  }
+
+  if (ordersLoading || productsLoading) {
+    return (
+      <div className="text-center text-gray-600 flex items-center justify-center h-64">
+        <AiOutlineShoppingCart className="animate-spin h-8 w-8 mr-2 text-blue-600" />
+        Loading dashboard...
+      </div>
+    );
+  }
+
+  if (ordersError || productsError) {
+    return (
+      <div className="text-center text-red-600">
+        <p>{ordersError || productsError}</p>
+        <button
+          onClick={() => fetchData()}
+          className="mt-4 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
+        >
+          Retry
+        </button>
+      </div>
+    );
+  }
+
   const availableBalance = seller?.availableBalance?.toFixed(2) || "0.00";
-  const totalSales = stats.totalSales.toFixed(2);
-  const pendingOrders = stats.pendingOrders;
-  const totalOrders = stats.totalOrders;
-  const recentOrders = stats.recentOrders;
+  const totalSales = stats.totalSales?.toFixed(2) || "0.00";
+  const pendingOrders = stats.pendingOrders || 0;
+  const totalOrders = stats.totalOrders || 0;
+  const recentOrders = stats.recentOrders || 0;
 
   const columns = [
     { field: "id", headerName: "Order ID", minWidth: 150, flex: 0.7 },
@@ -137,158 +212,127 @@ const ShopDashboardHero = () => {
       <h3 className="text-2xl font-semibold text-gray-900 pb-4">
         Shop Dashboard
       </h3>
-      {isLoading ? (
-        <div className="text-center text-gray-600 flex items-center justify-center h-64">
-          <AiOutlineShoppingCart className="animate-spin h-8 w-8 mr-2 text-blue-600" />
-          Loading dashboard...
-        </div>
-      ) : error ? (
-        <div className="text-center text-red-600">
-          <p>{error}</p>
-          <button
-            onClick={fetchData}
-            className="mt-4 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
+      <div className="w-full grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        {/* Account Balance */}
+        <div className="bg-white shadow rounded-lg p-4 hover:shadow-lg transition-shadow">
+          <div className="flex items-center">
+            <AiOutlineMoneyCollect size={30} className="mr-2 text-gray-600" />
+            <div>
+              <h3 className="text-lg font-medium text-gray-700">
+                Account Balance
+              </h3>
+              <span className="text-sm text-gray-500">
+                (with 10% service charge)
+              </span>
+            </div>
+          </div>
+          <h5 className="mt-2 text-2xl font-semibold text-gray-900">
+            ${availableBalance}
+          </h5>
+          <Link
+            href="/shop/withdraw-money"
+            className="text-blue-600 mt-2 block hover:underline"
           >
-            Retry
-          </button>
+            Withdraw Money
+          </Link>
         </div>
-      ) : (
-        <>
-          <div className="w-full grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-            {/* Account Balance */}
-            <div className="bg-white shadow rounded-lg p-4 hover:shadow-lg transition-shadow">
-              <div className="flex items-center">
-                <AiOutlineMoneyCollect
-                  size={30}
-                  className="mr-2 text-gray-600"
-                />
-                <div>
-                  <h3 className="text-lg font-medium text-gray-700">
-                    Account Balance
-                  </h3>
-                  <span className="text-sm text-gray-500">
-                    (with 10% service charge)
-                  </span>
-                </div>
-              </div>
-              <h5 className="mt-2 text-2xl font-semibold text-gray-900">
-                ${availableBalance}
-              </h5>
-              <Link
-                href="/shop/withdraw-money"
-                className="text-blue-600 mt-2 block hover:underline"
-              >
-                Withdraw Money
-              </Link>
-            </div>
 
-            {/* Total Sales */}
-            <div className="bg-white shadow rounded-lg p-4 hover:shadow-lg transition-shadow">
-              <div className="flex items-center">
-                <FaChartLine size={30} className="mr-2 text-gray-600" />
-                <h3 className="text-lg font-medium text-gray-700">
-                  Total Sales
-                </h3>
-              </div>
-              <h5 className="mt-2 text-2xl font-semibold text-gray-900">
-                ${totalSales}
-              </h5>
-              <Link
-                href="/shop/orders"
-                className="text-blue-600 mt-2 block hover:underline"
-              >
-                View Orders
-              </Link>
-            </div>
-
-            {/* Pending Orders */}
-            <div className="bg-white shadow rounded-lg p-4 hover:shadow-lg transition-shadow">
-              <div className="flex items-center">
-                <MdPendingActions size={30} className="mr-2 text-gray-600" />
-                <h3 className="text-lg font-medium text-gray-700">
-                  Pending Orders
-                </h3>
-              </div>
-              <h5 className="mt-2 text-2xl font-semibold text-gray-900">
-                {pendingOrders}
-              </h5>
-              <Link
-                href="/shop/orders?status=Pending"
-                className="text-blue-600 mt-2 block hover:underline"
-              >
-                Manage Orders
-              </Link>
-            </div>
-
-            {/* All Products */}
-            <div className="bg-white shadow rounded-lg p-4 hover:shadow-lg transition-shadow">
-              <div className="flex items-center">
-                <AiOutlineShoppingCart
-                  size={30}
-                  className="mr-2 text-gray-600"
-                />
-                <h3 className="text-lg font-medium text-gray-700">
-                  All Products
-                </h3>
-              </div>
-              <h5 className="mt-2 text-2xl font-semibold text-gray-900">
-                {products.length}
-              </h5>
-              <Link
-                href="/shop/products"
-                className="text-blue-600 mt-2 block hover:underline"
-              >
-                View Products
-              </Link>
-            </div>
+        {/* Total Sales */}
+        <div className="bg-white shadow rounded-lg p-4 hover:shadow-lg transition-shadow">
+          <div className="flex items-center">
+            <FaChartLine size={30} className="mr-2 text-gray-600" />
+            <h3 className="text-lg font-medium text-gray-700">Total Sales</h3>
           </div>
+          <h5 className="mt-2 text-2xl font-semibold text-gray-900">
+            ${totalSales}
+          </h5>
+          <Link
+            href="/shop/orders"
+            className="text-blue-600 mt-2 block hover:underline"
+          >
+            View Orders
+          </Link>
+        </div>
 
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="text-xl font-semibold text-gray-900">
-              Latest Orders
+        {/* Pending Orders */}
+        <div className="bg-white shadow rounded-lg p-4 hover:shadow-lg transition-shadow">
+          <div className="flex items-center">
+            <MdPendingActions size={30} className="mr-2 text-gray-600" />
+            <h3 className="text-lg font-medium text-gray-700">
+              Pending Orders
             </h3>
-            <Link
-              href="/shop/orders"
-              className="text-blue-600 hover:underline text-sm"
-            >
-              View All Orders
-            </Link>
           </div>
-          <div className="w-full bg-white p-4 rounded-lg shadow">
-            <DataGrid
-              rows={rows}
-              columns={columns}
-              pageSizeOptions={[5, 10, 20]}
-              initialState={{
-                pagination: {
-                  paginationModel: { pageSize: 5, page: 0 },
-                },
-              }}
-              disableRowSelectionOnClick
-              autoHeight
-              className="border-0"
-            />
-          </div>
+          <h5 className="mt-2 text-2xl font-semibold text-gray-900">
+            {pendingOrders}
+          </h5>
+          <Link
+            href="/shop/orders?status=Pending"
+            className="text-blue-600 mt-2 block hover:underline"
+          >
+            Manage Orders
+          </Link>
+        </div>
 
-          {/* Recent Order Trend */}
-          <div className="mt-8 bg-white shadow rounded-lg p-4">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">
-              Order Trend
-            </h3>
-            <p className="text-sm text-gray-600">
-              Orders in the last 30 days:{" "}
-              <span className="font-semibold">{recentOrders}</span>
-            </p>
-            <p className="text-sm text-gray-600 mt-2">
-              {recentOrders > 0
-                ? `You're averaging ${(recentOrders / 30).toFixed(
-                    1
-                  )} orders per day this month.`
-                : "No orders in the last 30 days. Promote your shop to boost sales!"}
-            </p>
+        {/* All Products */}
+        <div className="bg-white shadow rounded-lg p-4 hover:shadow-lg transition-shadow">
+          <div className="flex items-center">
+            <AiOutlineShoppingCart size={30} className="mr-2 text-gray-600" />
+            <h3 className="text-lg font-medium text-gray-700">All Products</h3>
           </div>
-        </>
-      )}
+          <h5 className="mt-2 text-2xl font-semibold text-gray-900">
+            {products.length}
+          </h5>
+          <Link
+            href="/shop/products"
+            className="text-blue-600 mt-2 block hover:underline"
+          >
+            View Products
+          </Link>
+        </div>
+      </div>
+
+      <div className="flex justify-between items-center mb-4">
+        <h3 className="text-xl font-semibold text-gray-900">Latest Orders</h3>
+        <Link
+          href="/shop/orders"
+          className="text-blue-600 hover:underline text-sm"
+        >
+          View All Orders
+        </Link>
+      </div>
+      <div className="w-full bg-white p-4 rounded-lg shadow">
+        <DataGrid
+          rows={rows}
+          columns={columns}
+          pageSizeOptions={[5, 10, 20]}
+          initialState={{
+            pagination: {
+              paginationModel: { pageSize: 5, page: 0 },
+            },
+          }}
+          disableRowSelectionOnClick
+          autoHeight
+          className="border-0"
+        />
+      </div>
+
+      {/* Recent Order Trend */}
+      <div className="mt-8 bg-white shadow rounded-lg p-4">
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">
+          Order Trend
+        </h3>
+        <p className="text-sm text-gray-600">
+          Orders in the last 30 days:{" "}
+          <span className="font-semibold">{recentOrders}</span>
+        </p>
+        <p className="text-sm text-gray-600 mt-2">
+          {recentOrders > 0
+            ? `You're averaging ${(recentOrders / 30).toFixed(
+                1
+              )} orders per day this month.`
+            : "No orders in the last 30 days. Promote your shop to boost sales!"}
+        </p>
+      </div>
     </div>
   );
 };
