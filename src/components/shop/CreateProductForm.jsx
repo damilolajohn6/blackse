@@ -23,7 +23,8 @@ const CreateProductForm = () => {
   const initialFormData = {
     name: "",
     description: "",
-    category: "",
+    categories: [],
+    culturalCategory: "",
     subCategory: "",
     price: "",
     priceDiscount: "",
@@ -56,10 +57,9 @@ const CreateProductForm = () => {
     price: "",
     stock: "",
   });
-  const [categories, setCategories] = useState([]);
+  const [categories, setCategories] = useState({ primary: [], cultural: [] });
 
   useEffect(() => {
-    // Fetch categories
     const fetchCategories = async () => {
       try {
         const { data } = await axios.get(
@@ -106,7 +106,8 @@ const CreateProductForm = () => {
           setFormData({
             name: product.name || "",
             description: product.description || "",
-            category: product.category || "",
+            categories: product.categories || [],
+            culturalCategory: product.culturalCategories?.[0] || "",
             subCategory: product.subCategory || "",
             price: product.price?.toString() || "",
             priceDiscount: product.priceDiscount?.toString() || "",
@@ -179,7 +180,8 @@ const CreateProductForm = () => {
       newErrors.name = "Name must be at least 5 characters";
     if (!formData.description)
       newErrors.description = "Description is required";
-    if (!formData.category) newErrors.category = "Category is required";
+    if (formData.categories.length === 0)
+      newErrors.categories = "At least one category is required";
     if (!formData.price || Number(formData.price) <= 0)
       newErrors.price = "Price must be positive";
     if (
@@ -251,6 +253,25 @@ const CreateProductForm = () => {
       }));
     }
     setErrors((prev) => ({ ...prev, [name]: "" }));
+  };
+
+  const handleCategoryChange = (e) => {
+    const { options } = e.target;
+    const selectedCategories = Array.from(options)
+      .filter((option) => option.selected)
+      .map((option) => option.value);
+    setFormData((prev) => ({
+      ...prev,
+      categories: selectedCategories,
+    }));
+    setErrors((prev) => ({ ...prev, categories: "" }));
+  };
+
+  const handleCulturalCategoryChange = (e) => {
+    setFormData((prev) => ({
+      ...prev,
+      culturalCategory: e.target.value,
+    }));
   };
 
   const handleVariationChange = (e) => {
@@ -394,6 +415,9 @@ const CreateProductForm = () => {
         tags: formData.tags
           ? formData.tags.split(",").map((tag) => tag.trim())
           : [],
+        culturalCategories: formData.culturalCategory
+          ? [formData.culturalCategory]
+          : [],
         price: Number(formData.price),
         priceDiscount: formData.priceDiscount
           ? Number(formData.priceDiscount)
@@ -492,18 +516,20 @@ const CreateProductForm = () => {
 
   if (isEditing && fetchError) {
     return (
-      <div className="py-6 max-w-4xl mx-auto">
-        <h2 className="text-2xl font-semibold text-red-600 text-center mb-6">
-          Error Loading Product
-        </h2>
-        <p className="text-center text-gray-600">{fetchError}</p>
-        <div className="flex justify-center mt-4">
-          <button
-            onClick={() => router.push("/shop/products")}
-            className="inline-flex items-center px-6 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-gray-600 hover:bg-gray-700"
-          >
-            Back to Products
-          </button>
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-md w-full space-y-6 bg-white p-8 rounded-xl shadow-2xl">
+          <h2 className="text-3xl font-bold text-red-600 text-center">
+            Error Loading Product
+          </h2>
+          <p className="text-center text-gray-600">{fetchError}</p>
+          <div className="flex justify-center">
+            <button
+              onClick={() => router.push("/shop/products")}
+              className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-lg text-white bg-red-600 hover:bg-red-700 transition-colors duration-200"
+            >
+              Back to Products
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -511,546 +537,656 @@ const CreateProductForm = () => {
 
   if (isLoading && isEditing) {
     return (
-      <div className="py-6 max-w-4xl mx-auto">
-        <p className="text-center text-gray-600">Loading product data...</p>
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-md w-full space-y-6 bg-white p-8 rounded-xl shadow-2xl">
+          <div className="flex justify-center">
+            <svg
+              className="animate-spin h-8 w-8 text-blue-600"
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+            >
+              <circle
+                className="opacity-25"
+                cx="12"
+                cy="12"
+                r="10"
+                stroke="currentColor"
+                strokeWidth="4"
+              ></circle>
+              <path
+                className="opacity-75"
+                fill="currentColor"
+                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+              ></path>
+            </svg>
+          </div>
+          <p className="text-center text-gray-600 text-lg">
+            Loading product data...
+          </p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="bg-white shadow-lg rounded-xl p-4 sm:p-6 mx-auto max-w-4xl">
-      <h2 className="text-2xl sm:text-3xl font-semibold text-blue-600 text-center mb-6">
-        {isEditing ? "Edit Product" : "Create New Product"}
-      </h2>
-      <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Basic Info */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700">
-              Name *
-            </label>
-            <input
-              type="text"
-              name="name"
-              value={formData.name}
-              onChange={handleInputChange}
-              className={`mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 ${
-                errors.name ? "border-red-500" : ""
-              }`}
-            />
-            {errors.name && (
-              <p className="text-red-500 text-sm mt-1">{errors.name}</p>
-            )}
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700">
-              Category *
-            </label>
-            <select
-              name="category"
-              value={formData.category}
-              onChange={handleInputChange}
-              className={`mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 ${
-                errors.category ? "border-red-500" : ""
-              }`}
-            >
-              <option value="">Select Category</option>
-              {categories.map((cat) => (
-                <option key={cat} value={cat}>
-                  {cat.charAt(0).toUpperCase() + cat.slice(1)}
-                </option>
-              ))}
-            </select>
-            {errors.category && (
-              <p className="text-red-500 text-sm mt-1">{errors.category}</p>
-            )}
-          </div>
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700">
-            Description *
-          </label>
-          <textarea
-            name="description"
-            value={formData.description}
-            onChange={handleInputChange}
-            rows="4"
-            className={`mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 ${
-              errors.description ? "border-red-500" : ""
-            }`}
-          ></textarea>
-          {errors.description && (
-            <p className="text-red-500 text-sm mt-1">{errors.description}</p>
-          )}
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700">
-              Sub-Category
-            </label>
-            <input
-              type="text"
-              name="subCategory"
-              value={formData.subCategory}
-              onChange={handleInputChange}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700">
-              Tags (comma-separated)
-            </label>
-            <input
-              type="text"
-              name="tags"
-              value={formData.tags}
-              onChange={handleInputChange}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-              placeholder="e.g., tech, new, sale"
-            />
-          </div>
-        </div>
-
-        {/* Pricing and Stock */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700">
-              Price ($) *
-            </label>
-            <input
-              type="number"
-              name="price"
-              value={formData.price}
-              onChange={handleInputChange}
-              min="0"
-              step="0.01"
-              className={`mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 ${
-                errors.price ? "border-red-500" : ""
-              }`}
-            />
-            {errors.price && (
-              <p className="text-red-500 text-sm mt-1">{errors.price}</p>
-            )}
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700">
-              Discount Price ($)
-            </label>
-            <input
-              type="number"
-              name="priceDiscount"
-              value={formData.priceDiscount}
-              onChange={handleInputChange}
-              min="0"
-              step="0.01"
-              className={`mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 ${
-                errors.priceDiscount ? "border-red-500" : ""
-              }`}
-            />
-            {errors.priceDiscount && (
-              <p className="text-red-500 text-sm mt-1">
-                {errors.priceDiscount}
-              </p>
-            )}
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700">
-              Stock *
-            </label>
-            <input
-              type="number"
-              name="stock"
-              value={formData.stock}
-              onChange={handleInputChange}
-              min="0"
-              className={`mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 ${
-                errors.stock ? "border-red-500" : ""
-              }`}
-            />
-            {errors.stock && (
-              <p className="text-red-500 text-sm mt-1">{errors.stock}</p>
-            )}
-          </div>
-        </div>
-
-        {/* Flash Sale */}
-        <div className="border-t pt-4">
-          <h3 className="text-lg font-semibold text-blue-600 mb-4">
-            Flash Sale
-          </h3>
-          <label className="flex items-center mb-4">
-            <input
-              type="checkbox"
-              name="flashSale.isActive"
-              checked={formData.flashSale.isActive}
-              onChange={handleInputChange}
-              className="rounded border-gray-300 text-blue-600 shadow-sm focus:ring-blue-500"
-            />
-            <span className="ml-2 text-sm text-gray-700">
-              Enable Flash Sale
-            </span>
-          </label>
-          {formData.flashSale.isActive && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+    <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-4xl mx-auto bg-white rounded-2xl shadow-2xl p-6 sm:p-8 lg:p-10">
+        <h2 className="text-3xl font-bold text-blue-600 text-center mb-8">
+          {isEditing ? "Edit Product" : "Create New Product"}
+        </h2>
+        <form onSubmit={handleSubmit} className="space-y-8">
+          {/* Basic Info */}
+          <div className="space-y-6">
+            <h3 className="text-xl font-semibold text-gray-900">
+              Basic Information
+            </h3>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  Flash Sale Price ($) *
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Product Name *
+                </label>
+                <input
+                  type="text"
+                  name="name"
+                  value={formData.name}
+                  onChange={handleInputChange}
+                  className={`w-full px-4 py-3 rounded-lg border-2 transition-all duration-200 ${
+                    errors.name
+                      ? "border-red-500 focus:border-red-500"
+                      : "border-gray-300 focus:border-blue-500"
+                  } focus:ring-2 focus:ring-blue-200 focus:outline-none`}
+                  placeholder="Enter product name"
+                />
+                {errors.name && (
+                  <p className="text-red-500 text-sm mt-1">{errors.name}</p>
+                )}
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Primary Categories *
+                </label>
+                <select
+                  name="categories"
+                  multiple
+                  value={formData.categories}
+                  onChange={handleCategoryChange}
+                  className={`w-full px-4 py-3 rounded-lg border-2 transition-all duration-200 ${
+                    errors.categories
+                      ? "border-red-500 focus:border-red-500"
+                      : "border-gray-300 focus:border-blue-500"
+                  } focus:ring-2 focus:ring-blue-200 focus:outline-none h-32`}
+                >
+                  {categories.primary.map((cat) => (
+                    <option key={cat} value={cat} className="py-1">
+                      {cat.charAt(0).toUpperCase() + cat.slice(1)}
+                    </option>
+                  ))}
+                </select>
+                {errors.categories && (
+                  <p className="text-red-500 text-sm mt-1">
+                    {errors.categories}
+                  </p>
+                )}
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Cultural Category *
+              </label>
+              <select
+                name="culturalCategory"
+                value={formData.culturalCategory}
+                onChange={handleCulturalCategoryChange}
+                className="w-full px-4 py-3 rounded-lg border-2 border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 focus:outline-none transition-all duration-200"
+              >
+                <option value="">Select a cultural category</option>
+                {categories.cultural.map((cat) => (
+                  <option key={cat} value={cat}>
+                    {cat.charAt(0).toUpperCase() + cat.slice(1)}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Description *
+              </label>
+              <textarea
+                name="description"
+                value={formData.description}
+                onChange={handleInputChange}
+                rows="4"
+                className={`w-full px-4 py-3 rounded-lg border-2 transition-all duration-200 ${
+                  errors.description
+                    ? "border-red-500 focus:border-red-500"
+                    : "border-gray-300 focus:border-blue-500"
+                } focus:ring-2 focus:ring-blue-200 focus:outline-none`}
+                placeholder="Describe your product"
+              ></textarea>
+              {errors.description && (
+                <p className="text-red-500 text-sm mt-1">
+                  {errors.description}
+                </p>
+              )}
+            </div>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Sub-Category
+                </label>
+                <input
+                  type="text"
+                  name="subCategory"
+                  value={formData.subCategory}
+                  onChange={handleInputChange}
+                  className="w-full px-4 py-3 rounded-lg border-2 border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 focus:outline-none transition-all duration-200"
+                  placeholder="Enter sub-category"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Tags (comma-separated)
+                </label>
+                <input
+                  type="text"
+                  name="tags"
+                  value={formData.tags}
+                  onChange={handleInputChange}
+                  className="w-full px-4 py-3 rounded-lg border-2 border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 focus:outline-none transition-all duration-200"
+                  placeholder="e.g., handmade, vintage, eco-friendly"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Pricing and Stock */}
+          <div className="space-y-6">
+            <h3 className="text-xl font-semibold text-gray-900">
+              Pricing & Stock
+            </h3>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Price ($) *
                 </label>
                 <input
                   type="number"
-                  name="flashSale.discountPrice"
-                  value={formData.flashSale.discountPrice}
+                  name="price"
+                  value={formData.price}
                   onChange={handleInputChange}
+                  className={`w-full px-4 py-3 rounded-lg border-2 transition-all duration-200 ${
+                    errors.price
+                      ? "border-red-500 focus:border-red-500"
+                      : "border-gray-300 focus:border-blue-500"
+                  } focus:ring-2 focus:ring-blue-200 focus:outline-none`}
                   min="0"
                   step="0.01"
-                  className={`mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 ${
-                    errors.flashSaleDiscountPrice ? "border-red-500" : ""
-                  }`}
+                  placeholder="0.00"
                 />
-                {errors.flashSaleDiscountPrice && (
-                  <p className="text-red-500 text-sm mt-1">
-                    {errors.flashSaleDiscountPrice}
-                  </p>
+                {errors.price && (
+                  <p className="text-red-500 text-sm mt-1">{errors.price}</p>
                 )}
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  Stock Limit *
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Discount Price ($)
                 </label>
                 <input
                   type="number"
-                  name="flashSale.stockLimit"
-                  value={formData.flashSale.stockLimit}
+                  name="priceDiscount"
+                  value={formData.priceDiscount}
                   onChange={handleInputChange}
+                  className={`w-full px-4 py-3 rounded-lg border-2 transition-all duration-200 ${
+                    errors.priceDiscount
+                      ? "border-red-500 focus:border-red-500"
+                      : "border-gray-300 focus:border-blue-500"
+                  } focus:ring-2 focus:ring-blue-200 focus:outline-none`}
                   min="0"
-                  className={`mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 ${
-                    errors.flashSale ? "border-red-500" : ""
-                  }`}
+                  step="0.01"
+                  placeholder="0.00"
                 />
-                {errors.flashSale && (
+                {errors.priceDiscount && (
                   <p className="text-red-500 text-sm mt-1">
-                    {errors.flashSale}
+                    {errors.priceDiscount}
                   </p>
                 )}
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  Start Date *
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Stock *
                 </label>
                 <input
-                  type="datetime-local"
-                  name="flashSale.startDate"
-                  value={formData.flashSale.startDate}
+                  type="number"
+                  name="stock"
+                  value={formData.stock}
                   onChange={handleInputChange}
-                  className={`mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 ${
-                    errors.flashSale ? "border-red-500" : ""
-                  }`}
+                  className={`w-full px-4 py-3 rounded-lg border-2 transition-all duration-200 ${
+                    errors.stock
+                      ? "border-red-500 focus:border-red-500"
+                      : "border-gray-300 focus:border-blue-500"
+                  } focus:ring-2 focus:ring-blue-200 focus:outline-none`}
+                  min="0"
+                  placeholder="0"
                 />
-                {errors.flashSale && (
-                  <p className="text-red-500 text-sm mt-1">
-                    {errors.flashSale}
-                  </p>
-                )}
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  End Date *
-                </label>
-                <input
-                  type="datetime-local"
-                  name="flashSale.endDate"
-                  value={formData.flashSale.endDate}
-                  onChange={handleInputChange}
-                  className={`mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 ${
-                    errors.flashSaleDates ? "border-red-500" : ""
-                  }`}
-                />
-                {errors.flashSaleDates && (
-                  <p className="text-red-500 text-sm mt-1">
-                    {errors.flashSaleDates}
-                  </p>
+                {errors.stock && (
+                  <p className="text-red-500 text-sm mt-1">{errors.stock}</p>
                 )}
               </div>
             </div>
-          )}
-        </div>
+          </div>
 
-        {/* Images */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700">
-            Images (Max 5) *
-          </label>
-          <input
-            type="file"
-            multiple
-            accept="image/*"
-            onChange={handleImageChange}
-            className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-          />
-          {errors.images && (
-            <p className="text-red-500 text-sm mt-1">{errors.images}</p>
-          )}
-          <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 gap-4">
-            {imagePreviews.map((preview, index) => (
-              <div key={index} className="relative group">
-                <img
-                  src={preview}
-                  alt={`Preview ${index}`}
-                  className="w-full h-32 object-cover rounded-md border border-gray-200"
+          {/* Images */}
+          <div className="space-y-6">
+            <h3 className="text-xl font-semibold text-gray-900">
+              Product Images
+            </h3>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Upload Images (Max 5) *
+              </label>
+              <div className="relative border-2 border-dashed border-gray-300 rounded-lg p-6 hover:border-blue-500 transition-all duration-200">
+                <input
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  onChange={handleImageChange}
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                 />
-                <button
-                  type="button"
-                  onClick={() => removeImage(index)}
-                  className="absolute top-1 right-1 bg-red-600 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                >
-                  ×
-                </button>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Variations */}
-        <div className="border-t pt-4">
-          <h3 className="text-lg font-semibold text-blue-600 mb-4">
-            Variations
-          </h3>
-          <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700">
-                Variation Name
-              </label>
-              <input
-                type="text"
-                name="name"
-                value={newVariation.name}
-                onChange={handleVariationChange}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                placeholder="e.g., Color"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">
-                Options
-              </label>
-              <input
-                type="text"
-                name="options"
-                value={newVariation.options}
-                onChange={handleVariationChange}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                placeholder="e.g., Red, Blue"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">
-                Price ($)
-              </label>
-              <input
-                type="number"
-                name="price"
-                value={newVariation.price}
-                onChange={handleVariationChange}
-                min="0"
-                step="0.01"
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">
-                Stock
-              </label>
-              <input
-                type="number"
-                name="stock"
-                value={newVariation.stock}
-                onChange={handleVariationChange}
-                min="0"
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-              />
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={addVariation}
-            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700"
-          >
-            Add Variation
-          </button>
-          {variations.length > 0 && (
-            <div className="mt-4">
-              <h4 className="text-sm font-medium text-gray-700">
-                Added Variations
-              </h4>
-              <ul className="mt-2 space-y-2">
-                {variations.map((varItem, index) => (
-                  <li
-                    key={index}
-                    className="flex items-center justify-between bg-gray-50 p-2 rounded-md"
+                <div className="text-center">
+                  <svg
+                    className="mx-auto h-12 w-12 text-gray-400"
+                    stroke="currentColor"
+                    fill="none"
+                    viewBox="0 0 48 48"
+                    aria-hidden="true"
                   >
-                    <span>
-                      {varItem.name}: {varItem.options.join(", ")} (Price: $
-                      {varItem.price}, Stock: {varItem.stock})
-                    </span>
+                    <path
+                      d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                  <p className="mt-1 text-sm text-gray-600">
+                    Drag and drop images here, or click to select files
+                  </p>
+                </div>
+              </div>
+              {errors.images && (
+                <p className="text-red-500 text-sm mt-1">{errors.images}</p>
+              )}
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+              {imagePreviews.map((preview, index) => (
+                <div key={index} className="relative group">
+                  <img
+                    src={preview}
+                    alt={`Preview ${index + 1}`}
+                    className="h-32 w-full object-cover rounded-lg shadow-md"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => removeImage(index)}
+                    className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+                  >
+                    <svg
+                      className="h-4 w-4"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="M6 18L18 6M6 6l12 12"
+                      ></path>
+                    </svg>
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Variations */}
+          <div className="space-y-6">
+            <h3 className="text-xl font-semibold text-gray-900">Variations</h3>
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Variation Name
+                </label>
+                <input
+                  type="text"
+                  name="name"
+                  value={newVariation.name}
+                  onChange={handleVariationChange}
+                  className="w-full px-4 py-3 rounded-lg border-2 border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 focus:outline-none transition-all duration-200"
+                  placeholder="e.g., Size, Color"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Options (comma-separated)
+                </label>
+                <input
+                  type="text"
+                  name="options"
+                  value={newVariation.options}
+                  onChange={handleVariationChange}
+                  className="w-full px-4 py-3 rounded-lg border-2 border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 focus:outline-none transition-all duration-200"
+                  placeholder="e.g., Small, Medium, Large"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Price
+                </label>
+                <input
+                  type="number"
+                  name="price"
+                  value={newVariation.price}
+                  onChange={handleVariationChange}
+                  className="w-full px-4 py-3 rounded-lg border-2 border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 focus:outline-none transition-all duration-200"
+                  min="0"
+                  step="0.01"
+                  placeholder="0.00"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Stock
+                </label>
+                <input
+                  type="number"
+                  name="stock"
+                  value={newVariation.stock}
+                  onChange={handleVariationChange}
+                  className="w-full px-4 py-3 rounded-lg border-2 border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 focus:outline-none transition-all duration-200"
+                  min="0"
+                  placeholder="0"
+                />
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={addVariation}
+              className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-lg text-white bg-blue-600 hover:bg-blue-700 transition-colors duration-200"
+            >
+              Add Variation
+            </button>
+            {variations.length > 0 && (
+              <div className="mt-4 space-y-2">
+                {variations.map((variation, index) => (
+                  <div
+                    key={index}
+                    className="flex justify-between items-center py-3 px-4 bg-gray-50 rounded-lg"
+                  >
+                    <p className="text-sm text-gray-700">
+                      {variation.name}: {variation.options.join(", ")} - $
+                      {variation.price.toFixed(2)}, Stock: {variation.stock}
+                    </p>
                     <button
                       type="button"
                       onClick={() => removeVariation(index)}
-                      className="text-red-600 hover:text-red-800"
+                      className="text-red-500 hover:text-red-700 transition-colors duration-200"
                     >
                       Remove
                     </button>
-                  </li>
+                  </div>
                 ))}
-              </ul>
-            </div>
-          )}
-        </div>
+              </div>
+            )}
+          </div>
 
-        {/* Canadian Origin */}
-        <div className="flex items-center space-x-4">
-          <label className="flex items-center">
-            <input
-              type="checkbox"
-              name="isMadeInCanada"
-              checked={formData.isMadeInCanada}
-              onChange={handleInputChange}
-              className="rounded border-gray-300 text-blue-600 shadow-sm focus:ring-blue-500"
-            />
-            <span className="ml-2 text-sm text-gray-700">Made in Canada</span>
-          </label>
-          {formData.isMadeInCanada && (
-            <div className="flex-1">
-              <label className="block text-sm font-medium text-gray-700">
-                Certification
-              </label>
+          {/* Canadian Certification */}
+          <div className="space-y-6">
+            <h3 className="text-xl font-semibold text-gray-900">
+              Canadian Certification
+            </h3>
+            <div className="flex items-center">
               <input
-                type="text"
-                name="canadianCertification"
-                value={formData.canadianCertification}
+                type="checkbox"
+                name="isMadeInCanada"
+                checked={formData.isMadeInCanada}
                 onChange={handleInputChange}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                className="h-5 w-5 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
               />
+              <label className="ml-3 text-sm font-medium text-gray-700">
+                Made in Canada
+              </label>
             </div>
-          )}
-        </div>
+            {formData.isMadeInCanada && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Canadian Certification *
+                </label>
+                <input
+                  type="text"
+                  name="canadianCertification"
+                  value={formData.canadianCertification}
+                  onChange={handleInputChange}
+                  className="w-full px-4 py-3 rounded-lg border-2 border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 focus:outline-none transition-all duration-200"
+                  placeholder="Enter certification details"
+                />
+              </div>
+            )}
+          </div>
 
-        {/* Shipping */}
-        <div className="border-t pt-4">
-          <h3 className="text-lg font-semibold text-blue-600 mb-4">
-            Shipping Details
-          </h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700">
-                Weight (kg)
-              </label>
-              <input
-                type="number"
-                name="shipping.weight"
-                value={formData.shipping.weight}
-                onChange={handleInputChange}
-                min="0"
-                step="0.1"
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">
-                Shipping Cost ($)
-              </label>
-              <input
-                type="number"
-                name="shipping.cost"
-                value={formData.shipping.cost}
-                onChange={handleInputChange}
-                min="0"
-                step="0.01"
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-              />
+          {/* Shipping */}
+          <div className="space-y-6">
+            <h3 className="text-xl font-semibold text-gray-900">
+              Shipping Details
+            </h3>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Weight (kg)
+                </label>
+                <input
+                  type="number"
+                  name="shipping.weight"
+                  value={formData.shipping.weight}
+                  onChange={handleInputChange}
+                  className="w-full px-4 py-3 rounded-lg border-2 border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 focus:outline-none transition-all duration-200"
+                  min="0"
+                  step="0.01"
+                  placeholder="0.00"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Length (cm)
+                </label>
+                <input
+                  type="number"
+                  name="dimensions.length"
+                  value={formData.shipping.dimensions.length}
+                  onChange={handleInputChange}
+                  className="w-full px-4 py-3 rounded-lg border-2 border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 focus:outline-none transition-all duration-200"
+                  min="0"
+                  step="0.01"
+                  placeholder="0.00"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Width (cm)
+                </label>
+                <input
+                  type="number"
+                  name="dimensions.width"
+                  value={formData.shipping.dimensions.width}
+                  onChange={handleInputChange}
+                  className="w-full px-4 py-3 rounded-lg border-2 border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 focus:outline-none transition-all duration-200"
+                  min="0"
+                  step="0.01"
+                  placeholder="0.00"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Height (cm)
+                </label>
+                <input
+                  type="number"
+                  name="dimensions.height"
+                  value={formData.shipping.dimensions.height}
+                  onChange={handleInputChange}
+                  className="w-full px-4 py-3 rounded-lg border-2 border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 focus:outline-none transition-all duration-200"
+                  min="0"
+                  step="0.01"
+                  placeholder="0.00"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Shipping Cost ($)
+                </label>
+                <input
+                  type="number"
+                  name="shipping.cost"
+                  value={formData.shipping.cost}
+                  onChange={handleInputChange}
+                  className="w-full px-4 py-3 rounded-lg border-2 border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 focus:outline-none transition-all duration-200"
+                  min="0"
+                  step="0.01"
+                  placeholder="0.00"
+                />
+              </div>
+              <div className="flex items-center">
+                <input
+                  type="checkbox"
+                  name="shipping.isFreeShipping"
+                  checked={formData.shipping.isFreeShipping}
+                  onChange={handleInputChange}
+                  className="h-5 w-5 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                />
+                <label className="ml-3 text-sm font-medium text-gray-700">
+                  Free Shipping
+                </label>
+              </div>
             </div>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700">
-                Length (cm)
-              </label>
-              <input
-                type="number"
-                name="shipping.dimensions.length"
-                value={formData.shipping.dimensions.length}
-                onChange={handleInputChange}
-                min="0"
-                step="0.1"
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">
-                Width (cm)
-              </label>
-              <input
-                type="number"
-                name="shipping.dimensions.width"
-                value={formData.shipping.dimensions.width}
-                onChange={handleInputChange}
-                min="0"
-                step="0.1"
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">
-                Height (cm)
-              </label>
-              <input
-                type="number"
-                name="shipping.dimensions.height"
-                value={formData.shipping.dimensions.height}
-                onChange={handleInputChange}
-                min="0"
-                step="0.1"
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-              />
-            </div>
-          </div>
-          <label className="flex items-center mt-4">
-            <input
-              type="checkbox"
-              name="shipping.isFreeShipping"
-              checked={formData.shipping.isFreeShipping}
-              onChange={handleInputChange}
-              className="rounded border-gray-300 text-blue-600 shadow-sm focus:ring-blue-500"
-            />
-            <span className="ml-2 text-sm text-gray-700">Free Shipping</span>
-          </label>
-        </div>
 
-        {/* Submit */}
-        <div className="flex justify-end space-x-4">
-          <button
-            type="button"
-            onClick={() => router.push("/shop/products")}
-            className="inline-flex items-center px-6 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-gray-600 hover:bg-gray-700"
-          >
-            Cancel
-          </button>
-          <button
-            type="submit"
-            disabled={isLoading}
-            className="inline-flex items-center px-6 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50"
-          >
-            {isLoading
-              ? isEditing
-                ? "Updating..."
-                : "Creating..."
-              : isEditing
-              ? "Update Product"
-              : "Create Product"}
-          </button>
-        </div>
-      </form>
+          {/* Flash Sale */}
+          <div className="space-y-6">
+            <h3 className="text-xl font-semibold text-gray-900">Flash Sale</h3>
+            <div className="flex items-center mb-4">
+              <input
+                type="checkbox"
+                name="flashSale.isActive"
+                checked={formData.flashSale.isActive}
+                onChange={handleInputChange}
+                className="h-5 w-5 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+              />
+              <label className="ml-3 text-sm font-medium text-gray-700">
+                Enable Flash Sale
+              </label>
+            </div>
+            {formData.flashSale.isActive && (
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Flash Sale Price ($)
+                  </label>
+                  <input
+                    type="number"
+                    name="flashSale.discountPrice"
+                    value={formData.flashSale.discountPrice}
+                    onChange={handleInputChange}
+                    className={`w-full px-4 py-3 rounded-lg border-2 transition-all duration-200 ${
+                      errors.flashSaleDiscountPrice
+                        ? "border-red-500 focus:border-red-500"
+                        : "border-gray-300 focus:border-blue-500"
+                    } focus:ring-2 focus:ring-blue-200 focus:outline-none`}
+                    min="0"
+                    step="0.01"
+                    placeholder="0.00"
+                  />
+                  {errors.flashSaleDiscountPrice && (
+                    <p className="text-red-500 text-sm mt-1">
+                      {errors.flashSaleDiscountPrice}
+                    </p>
+                  )}
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Start Date
+                  </label>
+                  <input
+                    type="datetime-local"
+                    name="flashSale.startDate"
+                    value={formData.flashSale.startDate}
+                    onChange={handleInputChange}
+                    className="w-full px-4 py-3 rounded-lg border-2 border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 focus:outline-none transition-all duration-200"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    End Date
+                  </label>
+                  <input
+                    type="datetime-local"
+                    name="flashSale.endDate"
+                    value={formData.flashSale.endDate}
+                    onChange={handleInputChange}
+                    className="w-full px-4 py-3 rounded-lg border-2 border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 focus:outline-none transition-all duration-200"
+                  />
+                  {errors.flashSaleDates && (
+                    <p className="text-red-500 text-sm mt-1">
+                      {errors.flashSaleDates}
+                    </p>
+                  )}
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Stock Limit
+                  </label>
+                  <input
+                    type="number"
+                    name="flashSale.stockLimit"
+                    value={formData.flashSale.stockLimit}
+                    onChange={handleInputChange}
+                    className="w-full px-4 py-3 rounded-lg border-2 border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 focus:outline-none transition-all duration-200"
+                    min="0"
+                    placeholder="0"
+                  />
+                </div>
+              </div>
+            )}
+            {errors.flashSale && (
+              <p className="text-red-500 text-sm mt-1">{errors.flashSale}</p>
+            )}
+          </div>
+
+          {/* Submit Buttons */}
+          <div className="flex justify-end space-x-4 pt-6">
+            <button
+              type="button"
+              onClick={() => router.push("/shop/products")}
+              className="inline-flex items-center px-6 py-3 border-2 border-gray-300 text-base font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50 transition-colors duration-200"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={isLoading}
+              className={`inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-lg text-white bg-blue-600 hover:bg-blue-700 transition-colors duration-200 ${
+                isLoading ? "opacity-50 cursor-not-allowed" : ""
+              }`}
+            >
+              {isLoading
+                ? "Processing..."
+                : isEditing
+                ? "Update Product"
+                : "Create Product"}
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 };

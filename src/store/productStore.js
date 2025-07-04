@@ -21,9 +21,15 @@ const useProductStore = create((set) => ({
         console.error("createProduct: No token provided");
         throw new Error("Authentication token missing");
       }
+      const modifiedProductData = {
+        ...productData,
+        culturalCategories: productData.culturalCategory
+          ? [productData.culturalCategory]
+          : [], // Convert single culturalCategory to array
+      };
       const { data } = await axios.post(
         `${API_BASE_URL}/product/create-product`,
-        productData,
+        modifiedProductData,
         {
           withCredentials: true,
           headers: {
@@ -60,9 +66,15 @@ const useProductStore = create((set) => ({
         console.error("updateProduct: No token provided");
         throw new Error("Authentication token missing");
       }
+      const modifiedProductData = {
+        ...productData,
+        culturalCategories: productData.culturalCategory
+          ? [productData.culturalCategory]
+          : [], // Convert single culturalCategory to array
+      };
       const { data } = await axios.put(
         `${API_BASE_URL}/product/update-product/${productId}`,
-        productData,
+        modifiedProductData,
         {
           withCredentials: true,
           headers: {

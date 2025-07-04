@@ -11,8 +11,7 @@ import { FaPlus, FaEdit, FaTrash, FaEye, FaBolt } from "react-icons/fa";
 
 const ListProducts = () => {
   const router = useRouter();
-  const { seller, isSeller, sellerToken } =
-    useAuthStore();
+  const { seller, isSeller, sellerToken } = useAuthStore();
   const {
     shopProducts,
     categories,
@@ -35,7 +34,7 @@ const ListProducts = () => {
   });
 
   useEffect(() => {
-    if ( !isSeller) {
+    if (!isSeller) {
       toast.error("Please log in to view your products", {
         toastId: "auth-error",
       });
@@ -99,7 +98,6 @@ const ListProducts = () => {
     setSelectedCategory(category);
     if (category) {
       try {
-        // Pass the seller._id as shopId
         await fetchProductsByCategory(seller._id, category, sellerToken);
       } catch (error) {
         toast.error(error.message || "Failed to load category products", {
@@ -192,9 +190,15 @@ const ListProducts = () => {
             className="rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm"
           >
             <option value="">All Categories</option>
-            {categories.map((category) => (
+            {categories.primary?.map((category) => (
               <option key={category} value={category}>
                 {category.charAt(0).toUpperCase() + category.slice(1)}
+              </option>
+            ))}
+            {categories.cultural?.map((category) => (
+              <option key={category} value={category}>
+                {category.charAt(0).toUpperCase() + category.slice(1)}{" "}
+                (Cultural)
               </option>
             ))}
           </select>
@@ -372,7 +376,12 @@ const ListProducts = () => {
                   <h2 className="text-base sm:text-lg font-semibold text-gray-900 truncate">
                     {product.name}
                   </h2>
-                  <p className="text-sm text-gray-600">{product.category}</p>
+                  <p className="text-sm text-gray-600">
+                    Primary: {product.categories?.join(", ") || "N/A"}
+                  </p>
+                  <p className="text-sm text-gray-600">
+                    Cultural: {product.culturalCategories?.[0] || "N/A"}
+                  </p>
                   <p className="text-lg font-bold text-blue-600 mt-2">
                     {product.flashSale?.isActive &&
                     product.flashSale?.discountPrice
