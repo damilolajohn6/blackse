@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 import DashboardLayout from "@/components/serviceProvider/Layout/DashboardLayout";
 import ServiceForm from "@/components/serviceProvider/ServiceForm";
-import ServicePreview from "@/components/serviceProvider//ServicePreview";
+import ServicePreview from "@/components/serviceProvider/ServicePreview";
 import useServiceProviderStore from "@/store/serviceStore";
 import { toast } from "react-toastify";
 
