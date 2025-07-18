@@ -63,18 +63,18 @@ const ShopDashboardSideBar = ({ active }) => {
         label="Shop Inbox"
         active={active === 8}
       />
-      <SidebarItem
+      {/* <SidebarItem
         href="/shop/coupons"
         icon={<AiOutlineGift size={30} />}
         label="Discount Codes"
         active={active === 9}
-      />
-      <SidebarItem
+      /> */}
+      {/* <SidebarItem
         href="/dashboard-refunds"
         icon={<HiOutlineReceiptRefund size={30} />}
         label="Refunds"
         active={active === 10}
-      />
+      /> */}
       <SidebarItem
         href="/settings"
         icon={<CiSettings size={30} />}

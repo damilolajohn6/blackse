@@ -9,6 +9,7 @@ import useProductStore from "@/store/productStore";
 import { toast } from "react-toastify";
 import {
   AiOutlineArrowRight,
+  AiOutlineDollar,
   AiOutlineMoneyCollect,
   AiOutlineShoppingCart,
 } from "react-icons/ai";
@@ -216,7 +217,7 @@ const ShopDashboardHero = () => {
         {/* Account Balance */}
         <div className="bg-white shadow rounded-lg p-4 hover:shadow-lg transition-shadow">
           <div className="flex items-center">
-            <AiOutlineMoneyCollect size={30} className="mr-2 text-gray-600" />
+            <AiOutlineDollar size={40} className="mr-2 text-gray-600" />
             <div>
               <h3 className="text-lg font-medium text-gray-700">
                 Account Balance
