@@ -1,38 +1,44 @@
-"use client";
+"use client"; 
 
 import { useState, useEffect } from "react";
-import { useRouter, useSearchParams } from "next/navigation"; 
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { Loader, Mail, RefreshCw, ArrowLeft } from "lucide-react"; 
+import { Loader, Mail, RefreshCw, ArrowLeft } from "lucide-react";
 import { toast } from "react-toastify";
-import useServiceProviderStore from "@/store/serviceStore"; 
+import useServiceProviderStore from "@/store/serviceStore";
 
 const ActivatePage = () => {
   const router = useRouter();
-  const searchParams = useSearchParams(); 
+
+  const searchParams = useSearchParams();
+
   const { activateAccount, isLoading, error, clearError } =
     useServiceProviderStore();
 
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
   const [email, setEmail] = useState("");
   const [resendLoading, setResendLoading] = useState(false);
-  const [resendTimer, setResendTimer] = useState(0); 
+  const [resendTimer, setResendTimer] = useState(0);
 
-
+  // Effect to extract email from URL query parameters on component mount
   useEffect(() => {
     const emailFromQuery = searchParams.get("email");
     if (emailFromQuery) {
       setEmail(emailFromQuery);
     }
-  }, [searchParams]); 
+  }, [searchParams]); // Depend on searchParams to react to changes
+
+  // Effect for the resend OTP timer countdown
   useEffect(() => {
     if (resendTimer > 0) {
       const timer = setTimeout(() => setResendTimer((prev) => prev - 1), 1000);
-      return () => clearTimeout(timer); 
+      return () => clearTimeout(timer); // Cleanup timer on unmount or if timer changes
     }
   }, [resendTimer]);
 
+  // Handle changes in OTP input fields
   const handleOtpChange = (index, value) => {
+    // Only allow single digit and numeric values
     if (value.length > 1 || !/^\d*$/.test(value)) {
       return;
     }
@@ -41,33 +47,39 @@ const ActivatePage = () => {
     newOtp[index] = value;
     setOtp(newOtp);
 
+    // Auto-focus to the next input field if a digit is entered and it's not the last field
     if (value && index < 5) {
       const nextInput = document.getElementById(`otp-${index + 1}`);
       if (nextInput) nextInput.focus();
     }
 
+    // Clear any previous error messages when user starts typing
     if (error) clearError();
   };
 
+  // Handle backspace key press for OTP input fields
   const handleKeyDown = (index, e) => {
+    // If backspace is pressed and the current field is empty, move focus to the previous field
     if (e.key === "Backspace" && !otp[index] && index > 0) {
       const prevInput = document.getElementById(`otp-${index - 1}`);
       if (prevInput) prevInput.focus();
     }
   };
 
+  // Handle paste event for OTP input fields
   const handlePaste = (e) => {
-    e.preventDefault(); 
-    const pastedData = e.clipboardData.getData("text").replace(/\D/g, ""); 
+    e.preventDefault(); // Prevent default paste behavior
+    const pastedData = e.clipboardData.getData("text").replace(/\D/g, ""); // Get pasted text and remove non-digits
     if (pastedData.length === 6) {
-      setOtp(pastedData.split("")); 
+      setOtp(pastedData.split("")); // Populate OTP fields with pasted data
     }
   };
 
+  // Handle form submission for account activation
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    const otpString = otp.join(""); 
+    const otpString = otp.join(""); // Combine OTP digits into a single string
     if (otpString.length !== 6) {
       toast.error("Please enter a valid 6-digit OTP");
       return;
@@ -79,25 +91,27 @@ const ActivatePage = () => {
     }
 
     try {
-      await activateAccount({ email, otp: otpString }); 
+      await activateAccount({ email, otp: otpString }); // Call the activation API
       toast.success("Account activated successfully!");
-      router.push("/service-provider/dashboard"); 
+      router.push("/service-provider/dashboard"); // Redirect to dashboard on success
     } catch (err) {
+      // Display error message from the store or a generic one
       toast.error(
         error || err.message || "Activation failed. Please try again."
       );
     }
   };
 
+  // Handle resending OTP
   const handleResendOtp = async () => {
     if (!email) {
       toast.error("Email is required to resend OTP");
       return;
     }
 
-    setResendLoading(true); 
+    setResendLoading(true); // Set loading state for resend button
     try {
-      
+      // Construct API URL using environment variable
       const apiUrl = `${
         process.env.NEXT_PUBLIC_SERVER || "http://localhost:8000/api/v2"
       }/service-provider/resend-otp`;
@@ -113,7 +127,7 @@ const ActivatePage = () => {
 
       if (response.ok) {
         toast.success("OTP resent successfully! Please check your email.");
-        setResendTimer(60); 
+        setResendTimer(60); // Start cooldown timer
       } else {
         toast.error(data.message || "Failed to resend OTP. Please try again.");
       }
@@ -123,7 +137,7 @@ const ActivatePage = () => {
         "Failed to resend OTP due to a network error. Please try again."
       );
     } finally {
-      setResendLoading(false); 
+      setResendLoading(false); // Reset loading state
     }
   };
 
@@ -140,7 +154,7 @@ const ActivatePage = () => {
               Activate Your Account
             </h2>
             <p className="mt-2 text-sm text-gray-600">
-              We've sent a 6-digit code to
+              We've sent a 6-digit code to{" "}
               <strong>{email || "your email"}</strong>
             </p>
           </div>
@@ -150,7 +164,7 @@ const ActivatePage = () => {
             <div className="mt-6 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
               <div className="flex">
                 <div className="flex-shrink-0">
-                  
+                  {/* Error icon */}
                   <svg
                     className="h-5 w-5 text-red-400"
                     viewBox="0 0 20 20"
@@ -191,7 +205,9 @@ const ActivatePage = () => {
             </div>
           )}
 
+          {/* OTP and Email Form */}
           <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+            {/* Email Input Field */}
             <div>
               <label
                 htmlFor="email"
@@ -246,7 +262,7 @@ const ActivatePage = () => {
               {isLoading ? (
                 <Loader className="h-5 w-5 animate-spin" />
               ) : (
-                "Activate Account" 
+                "Activate Account"
               )}
             </button>
           </form>
