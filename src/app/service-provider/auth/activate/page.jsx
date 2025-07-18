@@ -1,4 +1,6 @@
+import { Suspense } from "react";
 import ActivateForm from "./ActivateForm";
+import { Mail } from "lucide-react";
 
 export default function ActivatePage() {
   return (
@@ -16,7 +18,9 @@ export default function ActivatePage() {
               We've sent a 6-digit code to your email.
             </p>
           </div>
-          <ActivateForm />
+          <Suspense fallback={<div>Loading activation form...</div>}>
+            <ActivateForm />
+          </Suspense>
         </div>
       </div>
     </div>
