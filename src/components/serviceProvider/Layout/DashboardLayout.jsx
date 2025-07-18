@@ -1,7 +1,7 @@
-"use client"; // Crucial for client-side components in Next.js App Router
+"use client"; 
 
 import { useState, useEffect } from "react";
-import { useRouter, usePathname } from "next/navigation"; // Import usePathname
+import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import {
   Menu,

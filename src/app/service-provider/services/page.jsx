@@ -18,7 +18,7 @@ import {
   Grid,
   List,
 } from "lucide-react";
-import DashboardLayout from "@/components/serviceProvider/layout/DashboardLayout";
+import DashboardLayout from "@/components/serviceProvider/Layout/DashboardLayout";
 import ServiceCard from "@/components/serviceProvider/ServiceCard";
 import ServiceModal from "@/components/serviceProvider/ServiceModal";
 import DeleteConfirmModal from "@/components/serviceProvider/common/DeleteConfirmModal";
