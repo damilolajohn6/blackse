@@ -3,14 +3,13 @@
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import useAuthStore from "@/store/authStore";
+import useShopStore from "@/store/shopStore";
 import useOrderStore from "@/store/orderStore";
 import useProductStore from "@/store/productStore";
 import { toast } from "react-toastify";
 import {
   AiOutlineArrowRight,
   AiOutlineDollar,
-  AiOutlineMoneyCollect,
   AiOutlineShoppingCart,
 } from "react-icons/ai";
 import { MdPendingActions } from "react-icons/md";
@@ -19,7 +18,8 @@ import { DataGrid } from "@mui/x-data-grid";
 import { FaChartLine } from "react-icons/fa";
 
 const ShopDashboardHero = () => {
-  const { seller, isSeller, sellerToken, checkAuth, loadShop } = useAuthStore();
+  const { seller, isSeller, sellerToken, checkAuth, loadShop, refreshToken } =
+    useShopStore();
   const {
     orders,
     stats,
@@ -62,6 +62,7 @@ const ShopDashboardHero = () => {
         console.error("Auth check failed:", {
           message: err.message,
           stack: err.stack,
+          sellerToken: sellerToken ? "present" : "missing",
         });
         toast.error("Authentication failed. Please log in again.", {
           toastId: "auth-error",
@@ -92,31 +93,35 @@ const ShopDashboardHero = () => {
         data: error.response?.data,
       });
       if (error.response?.status === 401 || error.response?.status === 403) {
-        // Attempt to revalidate auth before redirecting
-        const authValid = await validateAuth();
-        if (!authValid) {
+        // Attempt to refresh token
+        try {
+          const refreshResult = await refreshToken();
+          if (refreshResult.success) {
+            // Retry fetching data with new token
+            await Promise.all([
+              fetchSellerOrders(seller._id, refreshResult.newToken, {
+                page: 1,
+                limit: 5,
+              }),
+              fetchShopProducts(seller._id, refreshResult.newToken),
+              fetchShopStats(seller._id, refreshResult.newToken),
+            ]);
+          } else {
+            toast.error("Session expired. Please log in again.", {
+              toastId: "auth-error",
+            });
+            router.push("/shop/login");
+          }
+        } catch (refreshError) {
+          console.error("Token refresh failed:", {
+            message: refreshError.message,
+            status: refreshError.response?.status,
+            data: refreshError.response?.data,
+          });
           toast.error("Session expired. Please log in again.", {
             toastId: "auth-error",
           });
           router.push("/shop/login");
-        } else {
-          // Retry fetching data after revalidation
-          try {
-            await Promise.all([
-              fetchSellerOrders(seller._id, sellerToken, { page: 1, limit: 5 }),
-              fetchShopProducts(seller._id, sellerToken),
-              fetchShopStats(seller._id, sellerToken),
-            ]);
-          } catch (retryError) {
-            console.error("Retry fetch failed:", {
-              message: retryError.message,
-              status: retryError.response?.status,
-              data: retryError.response?.data,
-            });
-            toast.error(retryError.message || "Failed to load dashboard data", {
-              toastId: "fetch-error",
-            });
-          }
         }
       } else {
         toast.error(error.message || "Failed to load dashboard data", {
@@ -135,6 +140,7 @@ const ShopDashboardHero = () => {
     fetchShopStats,
     router,
     validateAuth,
+    refreshToken,
   ]);
 
   // Initial auth validation
@@ -258,7 +264,6 @@ const ShopDashboardHero = () => {
         Shop Dashboard
       </h3>
       <div className="w-full grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        {/* Account Balance */}
         <div className="bg-white shadow rounded-lg p-4 hover:shadow-lg transition-shadow">
           <div className="flex items-center">
             <AiOutlineDollar size={40} className="mr-2 text-gray-600" />
@@ -282,7 +287,6 @@ const ShopDashboardHero = () => {
           </Link>
         </div>
 
-        {/* Total Sales */}
         <div className="bg-white shadow rounded-lg p-4 hover:shadow-lg transition-shadow">
           <div className="flex items-center">
             <FaChartLine size={30} className="mr-2 text-gray-600" />
@@ -299,7 +303,6 @@ const ShopDashboardHero = () => {
           </Link>
         </div>
 
-        {/* Pending Orders */}
         <div className="bg-white shadow rounded-lg p-4 hover:shadow-lg transition-shadow">
           <div className="flex items-center">
             <MdPendingActions size={30} className="mr-2 text-gray-600" />
@@ -318,7 +321,6 @@ const ShopDashboardHero = () => {
           </Link>
         </div>
 
-        {/* All Products */}
         <div className="bg-white shadow rounded-lg p-4 hover:shadow-lg transition-shadow">
           <div className="flex items-center">
             <AiOutlineShoppingCart size={30} className="mr-2 text-gray-600" />
@@ -361,7 +363,6 @@ const ShopDashboardHero = () => {
         />
       </div>
 
-      {/* Recent Order Trend */}
       <div className="mt-8 bg-white shadow rounded-lg p-4">
         <h3 className="text-lg font-semibold text-gray-900 mb-4">
           Order Trend

@@ -5,13 +5,13 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { toast } from "react-toastify";
-import useAuthStore from "@/store/authStore";
+import useShopStore from "@/store/shopStore";
 import useProductStore from "@/store/productStore";
 import { FaPlus, FaEdit, FaTrash, FaEye, FaBolt } from "react-icons/fa";
 
 const ListProducts = () => {
   const router = useRouter();
-  const { seller, isSeller, sellerToken } = useAuthStore();
+  const { seller, isSeller, sellerToken } = useShopStore();
   const {
     shopProducts,
     categories,

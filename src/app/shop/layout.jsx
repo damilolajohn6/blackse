@@ -3,16 +3,16 @@
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import ShopAuthProvider from "@/components/Providers/ShopAuthProvider";
-import useAuthStore from "@/store/authStore";
+import useShopStore from "@/store/shopStore";
 import Image from "next/image";
 import Link from "next/link";
 import { FaStore, FaBox, FaCog, FaSignOutAlt } from "react-icons/fa";
 
 export default function ShopLayout({ children }) {
-  const { seller, isSeller, logout } = useAuthStore();
+  const { seller, isSeller, logoutShop } = useShopStore();
 
   const handleLogout = async () => {
-    await logout();
+    await logoutShop();
   };
 
   return (

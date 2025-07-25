@@ -11,10 +11,7 @@ const useAuthStore = create(
     (set, get) => ({
       user: null,
       token: null,
-      seller: null,
-      sellerToken: null,
       isAuthenticated: false,
-      isSeller: false,
       isLoading: false,
 
       // User signup
@@ -22,23 +19,20 @@ const useAuthStore = create(
         set({ isLoading: true });
         try {
           const formData = new FormData();
-          formData.append("fullname", JSON.stringify(userData.fullname));
+          formData.append("fullname", userData.fullname);
           formData.append("username", userData.username);
           formData.append("email", userData.email);
           formData.append("password", userData.password);
           if (userData.phone) {
-            formData.append("phone", JSON.stringify(userData.phone));
+            formData.append("phone", userData.phone);
           }
           if (userData.avatar) {
-            formData.append("avatar", JSON.stringify(userData.avatar));
+            // Assuming avatar is a File object
+            formData.append("avatar", userData.avatar);
           }
           formData.append("role", userData.role || "user");
 
-          const formDataEntries = {};
-          for (const [key, value] of formData.entries()) {
-            formDataEntries[key] = value;
-          }
-          console.debug("Signup FormData:", formDataEntries);
+          console.debug("Signup FormData:", Object.fromEntries(formData));
 
           const res = await axios.post(
             `${API_BASE_URL}/user/create-user`,
@@ -67,24 +61,14 @@ const useAuthStore = create(
       verifyOtp: async (email, otp, router) => {
         set({ isLoading: true });
         try {
-          console.debug("Verify OTP request:", {
-            url: `${API_BASE_URL}/user/activation`,
-            email,
-            otp,
-          });
+          console.debug("Verify OTP request:", { email, otp });
           const res = await axios.post(
             `${API_BASE_URL}/user/activation`,
             { email, otp },
             { withCredentials: true }
           );
           const { user, token } = res.data;
-          set({
-            user,
-            token,
-            isAuthenticated: true,
-            isSeller:
-              user.role === "seller" && user.approvalStatus.isSellerApproved,
-          });
+          set({ user, token, isAuthenticated: true });
           localStorage.setItem("token", token);
           toast.success("Account verified successfully!");
           router.push("/login");
@@ -108,10 +92,7 @@ const useAuthStore = create(
       resendOtp: async (email) => {
         set({ isLoading: true });
         try {
-          console.debug("Resend OTP request:", {
-            url: `${API_BASE_URL}/user/resend-otp`,
-            email,
-          });
+          console.debug("Resend OTP request:", { email });
           const res = await axios.post(
             `${API_BASE_URL}/user/resend-otp`,
             { email },
@@ -138,23 +119,14 @@ const useAuthStore = create(
       login: async (email, password, router) => {
         set({ isLoading: true });
         try {
-          console.debug("Login request:", {
-            url: `${API_BASE_URL}/user/login-user`,
-            email,
-          });
+          console.debug("Login request:", { email });
           const res = await axios.post(
             `${API_BASE_URL}/user/login-user`,
             { email, password },
             { withCredentials: true }
           );
           const { user, token } = res.data;
-          set({
-            user,
-            token,
-            isAuthenticated: true,
-            isSeller:
-              user.role === "seller" && user.approvalStatus.isSellerApproved,
-          });
+          set({ user, token, isAuthenticated: true });
           localStorage.setItem("token", token);
           toast.success("Login Success!");
           router.push("/");
@@ -174,10 +146,7 @@ const useAuthStore = create(
       forgotPassword: async (email) => {
         set({ isLoading: true });
         try {
-          console.debug("Forgot password request:", {
-            url: `${API_BASE_URL}/user/forgot-password`,
-            email,
-          });
+          console.debug("Forgot password request:", { email });
           const res = await axios.post(
             `${API_BASE_URL}/user/forgot-password`,
             { email },
@@ -210,10 +179,7 @@ const useAuthStore = create(
       ) => {
         set({ isLoading: true });
         try {
-          console.debug("Reset password request:", {
-            url: `${API_BASE_URL}/user/reset-password`,
-            email,
-          });
+          console.debug("Reset password request:", { email });
           const res = await axios.post(
             `${API_BASE_URL}/user/reset-password`,
             { email, otp, newPassword, confirmPassword },
@@ -245,10 +211,7 @@ const useAuthStore = create(
           if (!token) {
             throw new Error("No authentication token available");
           }
-          console.debug("Fetch profile request:", {
-            url: `${API_BASE_URL}/social/profile/${userId}`,
-            userId,
-          });
+          console.debug("Fetch profile request:", { userId });
           const { data } = await axios.get(
             `${API_BASE_URL}/social/profile/${userId}`,
             {
@@ -272,363 +235,28 @@ const useAuthStore = create(
         }
       },
 
-      // Shop login
-      loginShop: async (email, password, router) => {
-        set({ isLoading: true });
-        try {
-          console.debug("Shop login request:", {
-            url: `${API_BASE_URL}/shop/login-shop`,
-            email,
-          });
-          const res = await axios.post(
-            `${API_BASE_URL}/shop/login-shop`,
-            { email, password },
-            { withCredentials: true }
-          );
-          const { seller, token } = res.data;
-          set({
-            seller,
-            sellerToken: token,
-            isSeller: true,
-          });
-          localStorage.setItem("seller_token", token);
-          toast.success("Shop login successful!");
-          router.push("/shop/dashboard");
-          return { success: true };
-        } catch (error) {
-          console.error(
-            "Shop login error:",
-            error.message,
-            error.response?.data
-          );
-          const message = error.response?.data?.message || "Shop login failed.";
-          toast.error(message);
-          return { success: false, message };
-        } finally {
-          set({ isLoading: false });
-        }
-      },
-
-      // Create shop
-      createShop: async (shopData, router) => {
-        set({ isLoading: true });
-        try {
-          console.debug("Create shop input data:", shopData);
-
-          const payload = {
-            fullname: shopData.fullname,
-            name: shopData.name,
-            email: shopData.email,
-            password: shopData.password,
-            address: shopData.address,
-            zipCode: shopData.zipCode,
-            phone: shopData.phone,
-            avatar: shopData.avatar,
-          };
-
-          console.debug("Create shop payload:", payload);
-
-          const res = await axios.post(
-            `${API_BASE_URL}/shop/create-shop`,
-            payload,
-            {
-              headers: { "Content-Type": "application/json" },
-              withCredentials: true,
-            }
-          );
-          toast.success(res.data.message);
-          router.push(
-            `/shop/create/activation?email=${encodeURIComponent(
-              shopData.email
-            )}`
-          );
-          return { success: true };
-        } catch (error) {
-          console.error(
-            "Create shop error:",
-            error.message,
-            error.response?.data
-          );
-          const message =
-            error.response?.data?.message || "Failed to create shop.";
-          toast.error(message);
-          return { success: false, message };
-        } finally {
-          set({ isLoading: false });
-        }
-      },
-
-      // Activate shop
-      activateShop: async (email, otp, router) => {
-        set({ isLoading: true });
-        try {
-          console.debug("Activate shop request:", {
-            url: `${API_BASE_URL}/shop/activation`,
-            email,
-            otp,
-          });
-          const res = await axios.post(
-            `${API_BASE_URL}/shop/activation`,
-            { email, otp },
-            { withCredentials: true }
-          );
-          const { seller, token } = res.data;
-          set({
-            seller,
-            sellerToken: token,
-            isSeller: true,
-          });
-          localStorage.setItem("seller_token", token);
-          toast.success("Shop activated successfully!");
-          router.push("/shop/dashboard");
-          return { success: true };
-        } catch (error) {
-          console.error(
-            "Activate shop error:",
-            error.message,
-            error.response?.data
-          );
-          const message =
-            error.response?.data?.message || "Failed to activate shop.";
-          toast.error(message);
-          return { success: false, message };
-        } finally {
-          set({ isLoading: false });
-        }
-      },
-
-      // Load shop
-      loadShop: async () => {
-        set({ isLoading: true });
-        try {
-          const currentToken =
-            get().sellerToken || localStorage.getItem("seller_token");
-          if (!currentToken) {
-            console.warn("loadShop: No sellerToken in store or localStorage");
-            set({ seller: null, sellerToken: null, isSeller: false });
-            return { success: false, message: "No seller token available" };
-          }
-          console.debug("Load shop request:", {
-            url: `${API_BASE_URL}/shop/getshop`,
-          });
-          const res = await axios.get(`${API_BASE_URL}/shop/getshop`, {
-            headers: { Authorization: `Bearer ${currentToken}` },
-            withCredentials: true,
-          });
-          set({
-            seller: res.data.seller,
-            sellerToken: res.data.token || currentToken,
-            isSeller: true,
-          });
-          return { success: true, seller: res.data.seller };
-        } catch (error) {
-          console.error(
-            "loadShop error:",
-            error.message,
-            error.response?.status,
-            error.response?.data
-          );
-          if (
-            error.response?.status === 401 ||
-            error.response?.status === 404
-          ) {
-            set({
-              seller: null,
-              sellerToken: null,
-              isSeller: false,
-            });
-            localStorage.removeItem("seller_token");
-          }
-          return {
-            success: false,
-            message: error.response?.data?.message || "Failed to load shop",
-          };
-        } finally {
-          set({ isLoading: false });
-        }
-      },
-
-      // Create coupon
-      createCoupon: async (couponData) => {
-        set({ isLoading: true });
-        try {
-          const { sellerToken, seller } = get();
-          if (!sellerToken || !seller) {
-            throw new Error("Seller not authenticated");
-          }
-          console.debug("Create coupon request:", {
-            url: `${API_BASE_URL}/coupon/create-coupon-code`,
-            couponData,
-          });
-          const res = await axios.post(
-            `${API_BASE_URL}/coupon/create-coupon-code`,
-            { ...couponData, shopId: seller._id },
-            {
-              headers: { Authorization: `Bearer ${sellerToken}` },
-              withCredentials: true,
-            }
-          );
-          toast.success("Coupon created successfully!");
-          return { success: true, coupon: res.data.couponCode };
-        } catch (error) {
-          console.error(
-            "Create coupon error:",
-            error.message,
-            error.response?.data
-          );
-          const message =
-            error.response?.data?.message || "Failed to create coupon.";
-          toast.error(message);
-          return { success: false, message };
-        } finally {
-          set({ isLoading: false });
-        }
-      },
-
-      // Fetch coupons
-      fetchCoupons: async () => {
-        set({ isLoading: true });
-        try {
-          const { sellerToken, seller } = get();
-          if (!sellerToken || !seller) {
-            console.warn("fetchCoupons: Seller not authenticated");
-            throw new Error("Seller not authenticated");
-          }
-          console.debug("Fetch coupons request:", {
-            url: `${API_BASE_URL}/coupon/get-coupon/${seller._id}`,
-            sellerId: seller._id,
-          });
-          const res = await axios.get(
-            `${API_BASE_URL}/coupon/get-coupon/${seller._id}`,
-            {
-              headers: { Authorization: `Bearer ${sellerToken}` },
-              withCredentials: true,
-            }
-          );
-          console.info("Coupons fetched:", {
-            shopId: seller._id,
-            count: res.data.couponCodes?.length || 0,
-          });
-          return { success: true, coupons: res.data.couponCodes || [] };
-        } catch (error) {
-          console.error(
-            "Fetch coupons error:",
-            error.message,
-            error.response?.status,
-            error.response?.data
-          );
-          const message =
-            error.response?.data?.message || "Failed to fetch coupons.";
-          toast.error(message);
-          return {
-            success: false,
-            coupons: [],
-            message,
-          };
-        } finally {
-          set({ isLoading: false });
-        }
-      },
-
-      // Update coupon
-      updateCoupon: async (couponId, couponData) => {
-        set({ isLoading: true });
-        try {
-          const { sellerToken, seller } = get();
-          if (!sellerToken || !seller) {
-            throw new Error("Seller not authenticated");
-          }
-          console.debug("Update coupon request:", {
-            url: `${API_BASE_URL}/coupon/update-coupon/${couponId}`,
-            couponData,
-          });
-          const res = await axios.put(
-            `${API_BASE_URL}/coupon/update-coupon/${couponId}`,
-            { ...couponData, shopId: seller._id },
-            {
-              headers: { Authorization: `Bearer ${sellerToken}` },
-              withCredentials: true,
-            }
-          );
-          toast.success("Coupon updated successfully!");
-          return { success: true, coupon: res.data.couponCode };
-        } catch (error) {
-          console.error(
-            "Update coupon error:",
-            error.message,
-            error.response?.data
-          );
-          const message =
-            error.response?.data?.message || "Failed to update coupon.";
-          toast.error(message);
-          return { success: false, message };
-        } finally {
-          set({ isLoading: false });
-        }
-      },
-
-      // Delete coupon
-      deleteCoupon: async (couponId) => {
-        set({ isLoading: true });
-        try {
-          const { sellerToken, seller } = get();
-          if (!sellerToken || !seller) {
-            throw new Error("Seller not authenticated");
-          }
-          console.debug("Delete coupon request:", {
-            url: `${API_BASE_URL}/coupon/delete-coupon/${couponId}`,
-          });
-          await axios.delete(
-            `${API_BASE_URL}/coupon/delete-coupon/${couponId}`,
-            {
-              headers: { Authorization: `Bearer ${sellerToken}` },
-              withCredentials: true,
-            }
-          );
-          toast.success("Coupon deleted successfully!");
-          return { success: true };
-        } catch (error) {
-          console.error(
-            "Delete coupon error:",
-            error.message,
-            error.response?.data
-          );
-          const message =
-            error.response?.data?.message || "Failed to delete coupon.";
-          toast.error(message);
-          return { success: false, message };
-        } finally {
-          set({ isLoading: false });
-        }
-      },
-
-      // Logout (all roles)
+      // User logout
       logout: async (router) => {
         set({ isLoading: true });
         try {
-          console.debug("Logout request:", {
-            user: `${API_BASE_URL}/user/logout`,
-            shop: `${API_BASE_URL}/shop/logout`,
+          console.debug("User logout request");
+          await axios.get(`${API_BASE_URL}/user/logout`, {
+            withCredentials: true,
           });
-          await Promise.all([
-            axios.get(`${API_BASE_URL}/user/logout`, { withCredentials: true }),
-            axios.get(`${API_BASE_URL}/shop/logout`, { withCredentials: true }),
-          ]);
           set({
             user: null,
             token: null,
-            seller: null,
-            sellerToken: null,
             isAuthenticated: false,
-            isSeller: false,
           });
           localStorage.removeItem("token");
-          localStorage.removeItem("seller_token");
-          toast.success("Log out successful!");
+          toast.success("Logged out successfully!");
           router.push("/login");
           return { success: true };
         } catch (error) {
           console.error("Logout error:", error.message, error.response?.data);
+          // Force logout on client-side even if server fails
+          set({ user: null, token: null, isAuthenticated: false });
+          localStorage.removeItem("token");
           const message = error.response?.data?.message || "Logout failed.";
           toast.error(message);
           return { success: false, message };
@@ -637,52 +265,27 @@ const useAuthStore = create(
         }
       },
 
-      // Check authentication
+      // Check user authentication
       checkAuth: async () => {
         set({ isLoading: true });
-        try {
-          const token = localStorage.getItem("token");
-          const sellerToken = localStorage.getItem("seller_token");
+        const token = get().token || localStorage.getItem("token");
+        if (!token) {
+          set({ isAuthenticated: false, isLoading: false });
+          return { success: false, isAuthenticated: false };
+        }
 
-          if (token) {
-            console.debug("Check user auth request:", {
-              url: `${API_BASE_URL}/user/getuser`,
-            });
-            const { data } = await axios.get(`${API_BASE_URL}/user/getuser`, {
-              headers: { Authorization: `Bearer ${token}` },
-              withCredentials: true,
-            });
-            set({
-              user: data.user,
-              token,
-              isAuthenticated: true,
-              isSeller:
-                data.user.role === "seller" &&
-                data.user.approvalStatus.isSellerApproved,
-            });
-            return { success: true, isAuthenticated: true };
-          } else if (sellerToken) {
-            console.debug("Check seller auth request:", {
-              url: `${API_BASE_URL}/shop/getshop`,
-            });
-            const { data } = await axios.get(`${API_BASE_URL}/shop/getshop`, {
-              headers: { Authorization: `Bearer ${sellerToken}` },
-              withCredentials: true,
-            });
-            set({
-              seller: data.seller,
-              sellerToken,
-              isSeller: true,
-            });
-            return { success: true, isSeller: true };
-          } else {
-            console.debug("checkAuth: No tokens found");
-            return {
-              success: false,
-              isAuthenticated: false,
-              isSeller: false,
-            };
-          }
+        try {
+          console.debug("Checking user auth...");
+          const { data } = await axios.get(`${API_BASE_URL}/user/getuser`, {
+            headers: { Authorization: `Bearer ${token}` },
+            withCredentials: true,
+          });
+          set({
+            user: data.user,
+            token,
+            isAuthenticated: true,
+          });
+          return { success: true, isAuthenticated: true };
         } catch (error) {
           console.error(
             "Check auth error:",
@@ -690,34 +293,42 @@ const useAuthStore = create(
             error.response?.data
           );
           set({
-            isAuthenticated: false,
-            isSeller: false,
             user: null,
             token: null,
-            seller: null,
-            sellerToken: null,
+            isAuthenticated: false,
           });
           localStorage.removeItem("token");
-          localStorage.removeItem("seller_token");
-          return {
-            success: false,
-            isAuthenticated: false,
-            isSeller: false,
-          };
+          return { success: false, isAuthenticated: false };
         } finally {
           set({ isLoading: false });
         }
       },
     }),
     {
-      name: "auth-storage",
+      name: "user-auth-storage",
       storage: {
         getItem: (name) => {
-          const value = localStorage.getItem(name);
-          return value ? JSON.parse(value) : null;
+          const str = localStorage.getItem(name);
+          if (!str) return null;
+          const { state } = JSON.parse(str);
+          return {
+            state: {
+              user: state.user,
+              token: state.token,
+              isAuthenticated: state.isAuthenticated,
+            },
+          };
         },
-        setItem: (name, value) =>
-          localStorage.setItem(name, JSON.stringify(value)),
+        setItem: (name, value) => {
+          const str = JSON.stringify({
+            state: {
+              user: value.state.user,
+              token: value.state.token,
+              isAuthenticated: value.state.isAuthenticated,
+            },
+          });
+          localStorage.setItem(name, str);
+        },
         removeItem: (name) => localStorage.removeItem(name),
       },
     }

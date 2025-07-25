@@ -58,7 +58,7 @@ const ContactPage = () => {
     {
       question: "What are BlackAndSell's support hours?",
       answer:
-        "Our support team is available Monday to Friday, 9:00 AM - 5:00 PM Eastern Time (ET, Canada).",
+        "Our support team is available Monday to Friday, 9:00 AM - 5:00 PM WAT (West Africa Time).",
     },
     {
       question: "How long does it take to get a response?",

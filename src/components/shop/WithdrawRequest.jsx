@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import useAuthStore from "@/store/authStore";
+import useShopStore from "@/store/shopStore";
 import { toast } from "react-toastify";
 import {
   Button,
@@ -20,7 +20,7 @@ const API_BASE_URL =
   process.env.NEXT_PUBLIC_SERVER || "http://localhost:8000/api/v2";
 
 const WithdrawRequest = () => {
-  const { seller, sellerToken, isSeller } = useAuthStore();
+  const { seller, sellerToken, isSeller } = useShopStore();
   const router = useRouter();
   const [amount, setAmount] = useState("");
   const [method, setMethod] = useState("");

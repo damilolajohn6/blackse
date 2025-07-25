@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
-import useAuthStore from "@/store/authStore";
+import useShopStore from "@/store/shopStore";
 import useEventStore from "@/store/eventStore";
 import { toast } from "react-toastify";
 import { TextField, Button, MenuItem, CircularProgress } from "@mui/material";
@@ -18,7 +18,7 @@ const categories = [
 ];
 
 const EditEvent = () => {
-  const { seller, sellerToken, isSeller } = useAuthStore();
+  const { seller, sellerToken, isSeller } = useShopStore();
   const { events, updateEvent, isLoading } = useEventStore();
   const router = useRouter();
   const { id } = useParams();

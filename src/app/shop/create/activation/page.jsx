@@ -2,11 +2,11 @@
 
 import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import useAuthStore from "@/store/authStore";
+import useShopStore from "@/store/shopStore";
 import { toast } from "react-toastify";
 
 const ShopActivationPage = () => {
-  const { activateShop } = useAuthStore();
+  const { activateShop } = useShopStore();
   const router = useRouter();
   const searchParams = useSearchParams();
   const email = searchParams.get("email");

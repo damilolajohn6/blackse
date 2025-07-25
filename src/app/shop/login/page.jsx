@@ -2,12 +2,12 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import useAuthStore from "@/store/authStore";
+import useShopStore from "@/store/shopStore";
 import { toast } from "react-toastify";
 import Link from "next/link";
 
 const ShopLogin = () => {
-  const {isSeller, loginShop } = useAuthStore();
+  const { isSeller, loginShop } = useShopStore();
   const router = useRouter();
   const [formData, setFormData] = useState({
     email: "",

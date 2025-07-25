@@ -2,10 +2,10 @@
 
 import ShopDashboardHero from "@/components/shop/ShopDashboardHero";
 import ShopDashboardSideBar from "@/components/shop/ShopDashboardSidebar";
-import useAuthStore from "@/store/authStore";
+import useShopStore from "@/store/shopStore";
 
 export default function ShopDashboard() {
-  const { seller } = useAuthStore();
+  const { seller } = useShopStore();
 
   return (
     <>

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import useAuthStore from "@/store/authStore";
+import useShopStore from "@/store/shopStore";
 import { toast } from "react-toastify";
 import axios from "axios";
 import {
@@ -32,7 +32,7 @@ const API_BASE_URL =
   process.env.NEXT_PUBLIC_SERVER || "http://localhost:8000/api/v2";
 
 const WithdrawalHistory = () => {
-  const { seller, sellerToken, isSeller, isLoading } = useAuthStore();
+  const { seller, sellerToken, isSeller, isLoading } = useShopStore();
   const router = useRouter();
   const [withdrawals, setWithdrawals] = useState([]);
   const [total, setTotal] = useState(0);

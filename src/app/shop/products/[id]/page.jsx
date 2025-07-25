@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Image from "next/image";
 import { toast } from "react-toastify";
-import useAuthStore from "@/store/authStore";
+import useShopStore from "@/store/shopStore";
 import useProductStore from "@/store/productStore";
 import Link from "next/link";
 
@@ -12,7 +12,7 @@ const ProductDetailsPage = () => {
   const router = useRouter();
   const params = useParams();
   const productId = params.id;
-  const { seller, isSeller, sellerToken, checkAuth, loadShop } = useAuthStore();
+  const { seller, isSeller, sellerToken, checkAuth, loadShop } = useShopStore();
   const { product, isLoading, error, fetchSingleProduct } = useProductStore();
   const [authChecked, setAuthChecked] = useState(false);
 

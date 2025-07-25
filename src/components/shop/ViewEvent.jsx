@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
-import useAuthStore from "@/store/authStore";
+import useShopStore from "@/store/shopStore";
 import useEventStore from "@/store/eventStore";
 import { toast } from "react-toastify";
 import {
@@ -18,7 +18,7 @@ import {
 import { AiOutlineEdit, AiOutlineDelete } from "react-icons/ai";
 
 const ViewEvent = () => {
-  const { seller, isSeller, sellerToken } = useAuthStore();
+  const { seller, isSeller, sellerToken } = useShopStore();
   const { currentEvent, isLoading, error, fetchEvent, deleteEvent } =
     useEventStore();
   const router = useRouter();

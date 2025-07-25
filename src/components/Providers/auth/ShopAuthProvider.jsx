@@ -2,11 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import useAuthStore from "@/store/authStore";
+import useShopStore from "@/store/shopStore";
 import { toast } from "react-toastify";
 
 export default function ShopAuthProvider({ children }) {
-  const { loadShop, isSeller, seller } = useAuthStore();
+  const { loadShop, isSeller, seller } = useShopStore();
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
 

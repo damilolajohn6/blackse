@@ -2,11 +2,11 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import useAuthStore from "@/store/authStore";
+import useShopStore from "@/store/shopStore";
 import { toast } from "react-toastify";
 
 const ShopCreatePage = () => {
-  const { isSeller, createShop } = useAuthStore();
+  const { isSeller, createShop } = useShopStore();
   const router = useRouter();
   const [formData, setFormData] = useState({
     fullname: { firstName: "", lastName: "", middleName: "" },

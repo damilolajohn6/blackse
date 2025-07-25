@@ -2,11 +2,11 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import useAuthStore from "@/store/authStore";
+import useShopStore from "@/store/shopStore";
 import { toast } from "react-toastify";
 
 const ShopInfo = () => {
-  const { seller, isSeller, isLoading } = useAuthStore();
+  const { seller, isSeller, isLoading } = useShopStore();
   const router = useRouter();
 
   useEffect(() => {

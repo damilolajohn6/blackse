@@ -2,7 +2,7 @@
 import styles from "@/styles/styles";
 import { useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
-import useAuthStore from "@/store/authStore";
+import useAuthStore from "@/store/shopStore";
 import { toast } from "react-toastify";
 import Link from "next/link";
 import axios from "axios";

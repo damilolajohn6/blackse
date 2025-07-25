@@ -2,11 +2,11 @@
 import React from "react";
 import CouponManagement from "@/components/shop/CouponManagement";
 import ShopDashboardSideBar from "@/components/shop/ShopDashboardSidebar";
-import useAuthStore from "@/store/authStore";
+import useShopStore from "@/store/shopStore";
 import { Box, CircularProgress } from "@mui/material";
 
 const CouponsPage = () => {
-  const { isLoading, isSeller } = useAuthStore();
+  const { isLoading, isSeller } = useShopStore();
 
   if (isLoading) {
     return (

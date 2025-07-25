@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { toast } from "react-toastify";
 import Link from "next/link";
-import useAuthStore from "@/store/authStore";
+import useShopStore from "@/store/shopStore";
 import useOrderStore from "@/store/orderStore";
 import {
   FaSpinner,
@@ -67,7 +67,7 @@ const courierOptions = [
 
 const OrderDetails = () => {
   const params = useParams();
-  const { user, token, seller } = useAuthStore();
+  const { user, token, seller } = useShopStore();
   const { updateOrderStatus, approveRefund } = useOrderStore();
 
   const [order, setOrder] = useState(null);

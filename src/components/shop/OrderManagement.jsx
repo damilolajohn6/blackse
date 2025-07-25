@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "react-toastify";
 import Link from "next/link";
-import useAuthStore from "@/store/authStore";
+import useShopStore from "@/store/shopStore";
 import useOrderStore from "@/store/orderStore";
 import {
   FaSpinner,
@@ -73,7 +73,7 @@ const courierOptions = [
 
 const OrderManagement = () => {
   const router = useRouter();
-  const { user, token, seller } = useAuthStore();
+  const { user, token, seller } = useShopStore();
   const {
     orders,
     isLoading,

@@ -1,12 +1,12 @@
 "use client";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import useAuthStore from "@/store/authStore";
+import useShopStore from "@/store/shopStore";
 import { toast } from "react-toastify";
 import Image from "next/image";
 
 export default function Settings() {
-  const { seller, sellerToken, isSeller, loadShop, isLoading } = useAuthStore();
+  const { seller, sellerToken, isSeller, loadShop, isLoading } = useShopStore();
   const router = useRouter();
 
   // Initialize form state with seller data

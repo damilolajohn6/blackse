@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import useAuthStore from "@/store/authStore";
+import useShopStore from "@/store/shopStore";
 import {
   Box,
   Button,
@@ -13,7 +13,7 @@ import { toast } from "react-toastify";
 import { useRouter } from "next/navigation";
 
 const ShopForgotPassword = () => {
-  const { forgotPassword, resetPassword, isLoading } = useAuthStore();
+  const { forgotPassword, resetPassword, isLoading } = useShopStore();
   const router = useRouter();
   const [step, setStep] = useState(1);
   const [email, setEmail] = useState("");

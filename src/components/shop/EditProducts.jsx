@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { toast } from "react-toastify";
-import useAuthStore from "@/store/authStore";
+import useShopStore from "@/store/shopStore";
 import useProductStore from "@/store/productStore";
 import { FaSpinner, FaArrowLeft, FaTrash } from "react-icons/fa";
 import Link from "next/link";
@@ -26,7 +26,7 @@ const categories = [
 export default function EditProduct() {
   const router = useRouter();
   const { id } = useParams();
-  const { seller, isSeller, sellerToken } = useAuthStore();
+  const { seller, isSeller, sellerToken } = useShopStore();
   const { product, isLoading, error, fetchSingleProduct, updateProduct } =
     useProductStore();
 

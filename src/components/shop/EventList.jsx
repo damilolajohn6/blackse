@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import useAuthStore from "@/store/authStore";
+import useShopStore from "@/store/shopStore";
 import useEventStore from "@/store/eventStore";
 import { toast } from "react-toastify";
 import { DataGrid } from "@mui/x-data-grid";
@@ -11,7 +11,7 @@ import { Button, CircularProgress } from "@mui/material";
 import { AiOutlineEdit, AiOutlineDelete } from "react-icons/ai";
 
 const EventList = () => {
-  const { seller, isSeller, sellerToken } = useAuthStore();
+  const { seller, isSeller, sellerToken } = useShopStore();
   const { events, isLoading, error, fetchShopEvents, deleteEvent } =
     useEventStore();
   const router = useRouter();

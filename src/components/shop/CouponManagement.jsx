@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import useAuthStore from "@/store/authStore";
+import useShopStore from "@/store/shopStore";
 import {
   Box,
   Button,
@@ -34,7 +34,7 @@ const CouponManagement = () => {
     createCoupon,
     updateCoupon,
     deleteCoupon,
-  } = useAuthStore();
+  } = useShopStore();
   const router = useRouter();
   const [coupons, setCoupons] = useState([]);
   const [error, setError] = useState(null);

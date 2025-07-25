@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
-import useAuthStore from "@/store/authStore";
+import useShopStore from "@/store/shopStore";
 import { toast } from "react-toastify";
 import axios from "axios";
 
@@ -10,7 +10,7 @@ const API_BASE_URL =
   process.env.NEXT_PUBLIC_SERVER || "http://localhost:8000/api/v2";
 
 const CreateProductForm = () => {
-  const { seller, isSeller, sellerToken } = useAuthStore();
+  const { seller, isSeller, sellerToken } = useShopStore();
   const router = useRouter();
   const params = useParams();
   const productId = params.id;
