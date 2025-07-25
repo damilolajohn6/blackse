@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import useAuthStore from "@/store/authStore";
@@ -36,65 +36,96 @@ const ShopDashboardHero = () => {
   } = useProductStore();
   const router = useRouter();
   const [authChecked, setAuthChecked] = useState(false);
+  const [isFetching, setIsFetching] = useState(false);
 
-  useEffect(() => {
-    const validateAuth = async () => {
-      if (!isSeller || !seller?._id || !sellerToken) {
-        try {
-          const { success } = await checkAuth();
-          if (!success) {
-            toast.error("Please log in to view dashboard", {
-              toastId: "auth-error",
-            });
-            router.push("/shop/login");
-            return;
-          }
-          await loadShop();
-        } catch (err) {
-          console.error("Auth check failed:", err);
-          toast.error("Authentication failed. Please log in again.", {
+  // Validate authentication and load shop data
+  const validateAuth = useCallback(async () => {
+    if (!isSeller || !seller?._id || !sellerToken) {
+      try {
+        const { success } = await checkAuth();
+        if (!success) {
+          toast.error("Please log in to view dashboard", {
             toastId: "auth-error",
           });
           router.push("/shop/login");
-          return;
+          return false;
         }
+        const shopResult = await loadShop();
+        if (!shopResult.success) {
+          toast.error("Failed to load shop data. Please log in again.", {
+            toastId: "shop-load-error",
+          });
+          router.push("/shop/login");
+          return false;
+        }
+      } catch (err) {
+        console.error("Auth check failed:", {
+          message: err.message,
+          stack: err.stack,
+        });
+        toast.error("Authentication failed. Please log in again.", {
+          toastId: "auth-error",
+        });
+        router.push("/shop/login");
+        return false;
       }
-      setAuthChecked(true);
-    };
-
-    validateAuth();
+    }
+    setAuthChecked(true);
+    return true;
   }, [isSeller, seller, sellerToken, checkAuth, loadShop, router]);
 
-  useEffect(() => {
-    if (!authChecked || !seller?._id || !sellerToken) return;
+  // Fetch dashboard data
+  const fetchData = useCallback(async () => {
+    if (!authChecked || !seller?._id || !sellerToken || isFetching) return;
 
-    const fetchData = async () => {
-      try {
-        await Promise.all([
-          fetchSellerOrders(seller._id, sellerToken, { page: 1, limit: 5 }),
-          fetchShopProducts(seller._id, sellerToken),
-          fetchShopStats(seller._id, sellerToken),
-        ]);
-      } catch (error) {
-        console.error("Dashboard data error:", {
-          message: error.message,
-          status: error.response?.status,
-          data: error.response?.data,
-        });
-        if (error.response?.status === 401 || error.response?.status === 403) {
+    setIsFetching(true);
+    try {
+      await Promise.all([
+        fetchSellerOrders(seller._id, sellerToken, { page: 1, limit: 5 }),
+        fetchShopProducts(seller._id, sellerToken),
+        fetchShopStats(seller._id, sellerToken),
+      ]);
+    } catch (error) {
+      console.error("Dashboard data fetch error:", {
+        message: error.message,
+        status: error.response?.status,
+        data: error.response?.data,
+      });
+      if (error.response?.status === 401 || error.response?.status === 403) {
+        // Attempt to revalidate auth before redirecting
+        const authValid = await validateAuth();
+        if (!authValid) {
           toast.error("Session expired. Please log in again.", {
             toastId: "auth-error",
           });
           router.push("/shop/login");
         } else {
-          toast.error(error.message || "Failed to load dashboard data", {
-            toastId: "fetch-error",
-          });
+          // Retry fetching data after revalidation
+          try {
+            await Promise.all([
+              fetchSellerOrders(seller._id, sellerToken, { page: 1, limit: 5 }),
+              fetchShopProducts(seller._id, sellerToken),
+              fetchShopStats(seller._id, sellerToken),
+            ]);
+          } catch (retryError) {
+            console.error("Retry fetch failed:", {
+              message: retryError.message,
+              status: retryError.response?.status,
+              data: retryError.response?.data,
+            });
+            toast.error(retryError.message || "Failed to load dashboard data", {
+              toastId: "fetch-error",
+            });
+          }
         }
+      } else {
+        toast.error(error.message || "Failed to load dashboard data", {
+          toastId: "fetch-error",
+        });
       }
-    };
-
-    fetchData();
+    } finally {
+      setIsFetching(false);
+    }
   }, [
     authChecked,
     seller?._id,
@@ -103,7 +134,20 @@ const ShopDashboardHero = () => {
     fetchShopProducts,
     fetchShopStats,
     router,
+    validateAuth,
   ]);
+
+  // Initial auth validation
+  useEffect(() => {
+    validateAuth();
+  }, [validateAuth]);
+
+  // Fetch data after auth is checked
+  useEffect(() => {
+    if (authChecked && seller?._id && sellerToken) {
+      fetchData();
+    }
+  }, [authChecked, seller, sellerToken, fetchData]);
 
   if (!authChecked) {
     return (
@@ -114,7 +158,7 @@ const ShopDashboardHero = () => {
     );
   }
 
-  if (ordersLoading || productsLoading) {
+  if (ordersLoading || productsLoading || isFetching) {
     return (
       <div className="text-center text-gray-600 flex items-center justify-center h-64">
         <AiOutlineShoppingCart className="animate-spin h-8 w-8 mr-2 text-blue-600" />
@@ -128,7 +172,7 @@ const ShopDashboardHero = () => {
       <div className="text-center text-red-600">
         <p>{ordersError || productsError}</p>
         <button
-          onClick={() => fetchData()}
+          onClick={fetchData}
           className="mt-4 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
         >
           Retry
