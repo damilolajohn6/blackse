@@ -42,8 +42,14 @@ const ShopDashboardHero = () => {
   const validateAuth = useCallback(async () => {
     if (!isSeller || !seller?._id || !sellerToken) {
       try {
+        console.debug("validateAuth: Checking authentication", {
+          isSeller,
+          hasSellerId: !!seller?._id,
+          hasToken: !!sellerToken,
+        });
         const { success } = await checkAuth();
         if (!success) {
+          console.warn("validateAuth: Authentication check failed");
           toast.error("Please log in to view dashboard", {
             toastId: "auth-error",
           });
@@ -52,6 +58,9 @@ const ShopDashboardHero = () => {
         }
         const shopResult = await loadShop();
         if (!shopResult.success) {
+          console.warn("validateAuth: Failed to load shop data", {
+            message: shopResult.message,
+          });
           toast.error("Failed to load shop data. Please log in again.", {
             toastId: "shop-load-error",
           });
@@ -59,7 +68,7 @@ const ShopDashboardHero = () => {
           return false;
         }
       } catch (err) {
-        console.error("Auth check failed:", {
+        console.error("validateAuth: Auth check failed:", {
           message: err.message,
           stack: err.stack,
           sellerToken: sellerToken ? "present" : "missing",
@@ -71,33 +80,71 @@ const ShopDashboardHero = () => {
         return false;
       }
     }
+    console.info("validateAuth: Authentication successful", {
+      shopId: seller?._id,
+    });
     setAuthChecked(true);
     return true;
   }, [isSeller, seller, sellerToken, checkAuth, loadShop, router]);
 
   // Fetch dashboard data
   const fetchData = useCallback(async () => {
-    if (!authChecked || !seller?._id || !sellerToken || isFetching) return;
+    if (!authChecked || !seller?._id || !sellerToken || isFetching) {
+      console.warn("fetchData: Skipping fetch due to missing prerequisites", {
+        authChecked,
+        hasSellerId: !!seller?._id,
+        hasToken: !!sellerToken,
+        isFetching,
+      });
+      return;
+    }
 
     setIsFetching(true);
     try {
-      await Promise.all([
-        fetchSellerOrders(seller._id, sellerToken, { page: 1, limit: 5 }),
-        fetchShopProducts(seller._id, sellerToken),
-        fetchShopStats(seller._id, sellerToken),
-      ]);
-    } catch (error) {
-      console.error("Dashboard data fetch error:", {
-        message: error.message,
-        status: error.response?.status,
-        data: error.response?.data,
+      console.debug("fetchData: Fetching dashboard data", {
+        shopId: seller._id,
+        token: sellerToken.substring(0, 20) + "...",
       });
-      if (error.response?.status === 401 || error.response?.status === 403) {
-        // Attempt to refresh token
-        try {
+      const results = await Promise.all([
+        fetchSellerOrders(seller._id, sellerToken, { page: 1, limit: 5 }).catch(
+          (err) => ({ success: false, error: err })
+        ),
+        fetchShopProducts(seller._id, sellerToken).catch((err) => ({
+          success: false,
+          error: err,
+        })),
+        fetchShopStats(seller._id, sellerToken).catch((err) => ({
+          success: false,
+          error: err,
+        })),
+      ]);
+
+      const errors = results.filter((result) => !result.success);
+      if (errors.length > 0) {
+        const firstError = errors[0].error;
+        console.error("fetchData: One or more API calls failed", {
+          errors: errors.map((e) => ({
+            message: e.error.message,
+            status: e.error.response?.status,
+            data: e.error.response?.data,
+          })),
+        });
+
+        if (
+          errors.some(
+            (e) =>
+              e.error.response?.status === 401 ||
+              e.error.response?.status === 403
+          )
+        ) {
+          // Attempt to refresh token
+          console.debug("fetchData: Attempting token refresh");
           const refreshResult = await refreshToken();
           if (refreshResult.success) {
-            // Retry fetching data with new token
+            console.info("fetchData: Token refreshed, retrying data fetch", {
+              newToken: refreshResult.newToken.substring(0, 20) + "...",
+            });
+            // Retry with new token
             await Promise.all([
               fetchSellerOrders(seller._id, refreshResult.newToken, {
                 page: 1,
@@ -107,27 +154,29 @@ const ShopDashboardHero = () => {
               fetchShopStats(seller._id, refreshResult.newToken),
             ]);
           } else {
+            console.error("fetchData: Token refresh failed", {
+              message: refreshResult.message,
+            });
             toast.error("Session expired. Please log in again.", {
               toastId: "auth-error",
             });
             router.push("/shop/login");
           }
-        } catch (refreshError) {
-          console.error("Token refresh failed:", {
-            message: refreshError.message,
-            status: refreshError.response?.status,
-            data: refreshError.response?.data,
+        } else {
+          toast.error(firstError.message || "Failed to load dashboard data", {
+            toastId: "fetch-error",
           });
-          toast.error("Session expired. Please log in again.", {
-            toastId: "auth-error",
-          });
-          router.push("/shop/login");
         }
-      } else {
-        toast.error(error.message || "Failed to load dashboard data", {
-          toastId: "fetch-error",
-        });
       }
+    } catch (error) {
+      console.error("fetchData: Unexpected error:", {
+        message: error.message,
+        status: error.response?.status,
+        data: error.response?.data,
+      });
+      toast.error(error.message || "Failed to load dashboard data", {
+        toastId: "fetch-error",
+      });
     } finally {
       setIsFetching(false);
     }
@@ -139,18 +188,19 @@ const ShopDashboardHero = () => {
     fetchShopProducts,
     fetchShopStats,
     router,
-    validateAuth,
     refreshToken,
   ]);
 
   // Initial auth validation
   useEffect(() => {
+    console.debug("useEffect: Running validateAuth");
     validateAuth();
   }, [validateAuth]);
 
   // Fetch data after auth is checked
   useEffect(() => {
     if (authChecked && seller?._id && sellerToken) {
+      console.debug("useEffect: Running fetchData");
       fetchData();
     }
   }, [authChecked, seller, sellerToken, fetchData]);

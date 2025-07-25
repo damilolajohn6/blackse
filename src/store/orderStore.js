@@ -2,6 +2,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import axios from "axios";
+import useShopStore from "./shopStore";
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_SERVER || "http://localhost:8000/api/v2";
@@ -103,53 +104,63 @@ const useOrderStore = create(
       setLimit: (limit) => set({ limit }),
 
       // Fetch seller orders with enhanced filtering and sorting
-      fetchSellerOrders: async (shopId, token, options = {}) => {
+      fetchSellerOrders: async (shopId, token, params = {}) => {
+        set({ isLoading: true, error: null });
         const {
           page = 1,
           limit = 10,
-          status,
-          startDate,
-          endDate,
-          search,
           sortBy = "createdAt",
           sortOrder = "desc",
-        } = options;
+        } = params;
+        // Use token from useShopStore if not provided
+        const sellerToken = token || useShopStore.getState().sellerToken;
 
-        set({ isLoading: true, error: null });
+        if (!sellerToken) {
+          console.error("fetchSellerOrders: No seller token available", {
+            shopId,
+            params,
+          });
+          set({ isLoading: false, error: "No seller token available" });
+          return { success: false, message: "No seller token available" };
+        }
 
         try {
-          const params = new URLSearchParams({
-            page: page.toString(),
-            limit: limit.toString(),
-            sortBy,
-            sortOrder,
+          console.debug("fetchSellerOrders request:", {
+            url: `${API_BASE_URL}/order/get-seller-all-orders/${shopId}`,
+            params,
+            token: sellerToken.substring(0, 20) + "...",
           });
-
-          if (status) params.append("status", status);
-          if (startDate) params.append("startDate", startDate);
-          if (endDate) params.append("endDate", endDate);
-          if (search) params.append("search", search);
-
-          const response = await api.get(
-            `/order/get-seller-all-orders/${shopId}?${params}`
+          const res = await axios.get(
+            `${API_BASE_URL}/order/get-seller-all-orders/${shopId}`,
+            {
+              params: { page, limit, sortBy, sortOrder },
+              headers: { Authorization: `Bearer ${sellerToken}` },
+              withCredentials: true,
+            }
           );
-
-          set({
-            orders: response.data.orders || [],
-            total: response.data.total || 0,
-            page: response.data.page || 1,
-            pages: response.data.pages || 1,
-            isLoading: false,
+          set({ orders: res.data.orders, isLoading: false });
+          console.info("fetchSellerOrders: Orders fetched", {
+            shopId,
+            orderCount: res.data.orders.length,
+            page,
+            limit,
           });
-
-          return response.data;
+          return { success: true, orders: res.data.orders };
         } catch (error) {
-          set({
-            error: error.message,
-            isLoading: false,
-            orders: [],
+          console.error("fetchSellerOrders error:", {
+            message: error.message,
+            status: error.response?.status,
+            data: error.response?.data,
+            shopId,
           });
-          throw error;
+          set({
+            isLoading: false,
+            error: error.response?.data?.message || "Failed to fetch orders",
+          });
+          return {
+            success: false,
+            message: error.response?.data?.message || "Failed to fetch orders",
+          };
         }
       },
 
@@ -179,25 +190,50 @@ const useOrderStore = create(
       // Fetch shop statistics
       fetchShopStats: async (shopId, token) => {
         set({ isLoading: true, error: null });
+        // Use token from useShopStore if not provided
+        const sellerToken = token || useShopStore.getState().sellerToken;
+
+        if (!sellerToken) {
+          console.error("fetchShopStats: No seller token available", {
+            shopId,
+          });
+          set({ isLoading: false, error: "No seller token available" });
+          return { success: false, message: "No seller token available" };
+        }
 
         try {
-          const response = await api.get(`/order/shop/stats/${shopId}`);
-
-          set({
-            stats: {
-              ...get().stats,
-              ...response.data.stats,
-            },
-            isLoading: false,
+          console.debug("fetchShopStats request:", {
+            url: `${API_BASE_URL}/order/shop/stats/${shopId}`,
+            token: sellerToken.substring(0, 20) + "...",
           });
-
-          return response.data.stats;
+          const res = await axios.get(
+            `${API_BASE_URL}/order/shop/stats/${shopId}`,
+            {
+              headers: { Authorization: `Bearer ${sellerToken}` },
+              withCredentials: true,
+            }
+          );
+          set({ stats: res.data.stats, isLoading: false });
+          console.info("fetchShopStats: Stats fetched", {
+            shopId,
+            stats: res.data.stats,
+          });
+          return { success: true, stats: res.data.stats };
         } catch (error) {
-          set({
-            error: error.message,
-            isLoading: false,
+          console.error("fetchShopStats error:", {
+            message: error.message,
+            status: error.response?.status,
+            data: error.response?.data,
+            shopId,
           });
-          throw error;
+          set({
+            isLoading: false,
+            error: error.response?.data?.message || "Failed to fetch stats",
+          });
+          return {
+            success: false,
+            message: error.response?.data?.message || "Failed to fetch stats",
+          };
         }
       },
 
