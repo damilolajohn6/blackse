@@ -9,13 +9,14 @@ import useProductStore from "@/store/productStore";
 import { toast } from "react-toastify";
 import {
   AiOutlineArrowRight,
+  AiOutlineClockCircle,
   AiOutlineDollar,
   AiOutlineShoppingCart,
 } from "react-icons/ai";
 import { MdPendingActions } from "react-icons/md";
-import { Button } from "@mui/material";
+import { Button, Tooltip } from "@mui/material";
 import { DataGrid } from "@mui/x-data-grid";
-import { FaChartLine } from "react-icons/fa";
+import { FaChartLine, FaExchangeAlt } from "react-icons/fa";
 
 const ShopDashboardHero = () => {
   const { seller, isSeller, sellerToken, checkAuth, loadShop, refreshToken } =
@@ -23,10 +24,14 @@ const ShopDashboardHero = () => {
   const {
     orders,
     stats,
+    transactions,
+    availableBalance,
+    transactionTotal,
     isLoading: ordersLoading,
     error: ordersError,
     fetchSellerOrders,
     fetchShopStats,
+    fetchShopTransactions,
   } = useOrderStore();
   const {
     products,
@@ -117,6 +122,12 @@ const ShopDashboardHero = () => {
           success: false,
           error: err,
         })),
+        fetchShopTransactions(seller._id, { page: 1, limit: 5 }).catch(
+          (err) => ({
+            success: false,
+            error: err,
+          })
+        ),
       ]);
 
       const errors = results.filter((result) => !result.success);
@@ -124,7 +135,7 @@ const ShopDashboardHero = () => {
         const firstError = errors[0].error;
         console.error("fetchData: One or more API calls failed", {
           errors: errors.map((e) => ({
-            message: e.error.message,
+            message: e.message,
             status: e.error.response?.status,
             data: e.error.response?.data,
           })),
@@ -137,14 +148,12 @@ const ShopDashboardHero = () => {
               e.error.response?.status === 403
           )
         ) {
-          // Attempt to refresh token
           console.debug("fetchData: Attempting token refresh");
           const refreshResult = await refreshToken();
           if (refreshResult.success) {
             console.info("fetchData: Token refreshed, retrying data fetch", {
               newToken: refreshResult.newToken.substring(0, 20) + "...",
             });
-            // Retry with new token
             await Promise.all([
               fetchSellerOrders(seller._id, refreshResult.newToken, {
                 page: 1,
@@ -152,6 +161,10 @@ const ShopDashboardHero = () => {
               }),
               fetchShopProducts(seller._id, refreshResult.newToken),
               fetchShopStats(seller._id, refreshResult.newToken),
+              fetchShopTransactions(seller._id, {
+                page: 1,
+                limit: 5,
+              }),
             ]);
           } else {
             console.error("fetchData: Token refresh failed", {
@@ -187,6 +200,7 @@ const ShopDashboardHero = () => {
     fetchSellerOrders,
     fetchShopProducts,
     fetchShopStats,
+    fetchShopTransactions,
     router,
     refreshToken,
   ]);
@@ -237,13 +251,15 @@ const ShopDashboardHero = () => {
     );
   }
 
-  const availableBalance = seller?.availableBalance?.toFixed(2) || "0.00";
+  const pendingFunds =
+    (stats.totalSales - availableBalance)?.toFixed(2) || "0.00";
   const totalSales = stats.totalSales?.toFixed(2) || "0.00";
   const pendingOrders = stats.pendingOrders || 0;
   const totalOrders = stats.totalOrders || 0;
   const recentOrders = stats.recentOrders || 0;
+  const pendingBalance = seller?.pendingBalance?.toFixed(2) || "0.00";
 
-  const columns = [
+  const orderColumns = [
     { field: "id", headerName: "Order ID", minWidth: 150, flex: 0.7 },
     {
       field: "status",
@@ -298,7 +314,84 @@ const ShopDashboardHero = () => {
     },
   ];
 
-  const rows =
+  const transactionColumns = [
+    { field: "id", headerName: "Transaction ID", minWidth: 150, flex: 0.7 },
+    {
+      field: "type",
+      headerName: "Type",
+      minWidth: 100,
+      flex: 0.5,
+      renderCell: (params) => (
+        <span
+          className={`px-2 py-1 rounded-full text-xs font-medium ${
+            params.value === "Deposit"
+              ? "bg-green-100 text-green-600"
+              : params.value === "Withdrawal" &&
+                params.row.status === "Processing"
+              ? "bg-yellow-100 text-yellow-600"
+              : "bg-red-100 text-red-600"
+          }`}
+        >
+          {params.value}
+        </span>
+      ),
+    },
+    {
+      field: "amount",
+      headerName: "Amount",
+      type: "string",
+      minWidth: 120,
+      flex: 0.6,
+      renderCell: (params) => `$${params.value.toFixed(2)}`,
+    },
+    {
+      field: "orderId",
+      headerName: "Order ID",
+      minWidth: 150,
+      flex: 0.7,
+      renderCell: (params) => params.value || "N/A",
+    },
+    {
+      field: "note",
+      headerName: "Note",
+      minWidth: 200,
+      flex: 1,
+      renderCell: (params) => params.value || "N/A",
+    },
+    {
+      field: "status",
+      headerName: "Status",
+      minWidth: 120,
+      flex: 0.6,
+      renderCell: (params) => (
+        <span
+          className={`px-2 py-1 rounded-full text-xs font-medium ${
+            params.value === "Processing"
+              ? "bg-yellow-100 text-yellow-600"
+              : params.value === "Approved" || params.value === "Succeeded"
+              ? "bg-green-100 text-green-600"
+              : "bg-red-100 text-red-600"
+          }`}
+        >
+          {params.value}
+        </span>
+      ),
+    },
+    {
+      field: "createdAt",
+      headerName: "Date",
+      minWidth: 150,
+      flex: 0.7,
+      renderCell: (params) =>
+        new Date(params.value).toLocaleDateString("en-US", {
+          year: "numeric",
+          month: "short",
+          day: "numeric",
+        }),
+    },
+  ];
+
+  const orderRows =
     orders?.map((item) => ({
       id: item._id,
       itemsQty: Array.isArray(item.items)
@@ -308,12 +401,23 @@ const ShopDashboardHero = () => {
       status: item.status,
     })) || [];
 
+  const transactionRows =
+    transactions?.map((item, index) => ({
+      id: `${item.createdAt}-${index}`,
+      type: item.type,
+      amount: item.amount,
+      orderId: item.orderId,
+      note: item.note,
+      status: item.status,
+      createdAt: item.createdAt,
+    })) || [];
+
   return (
     <div className="w-full p-6 md:p-8">
       <h3 className="text-2xl font-semibold text-gray-900 pb-4">
         Shop Dashboard
       </h3>
-      <div className="w-full grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+      <div className="w-full grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mb-8">
         <div className="bg-white shadow rounded-lg p-4 hover:shadow-lg transition-shadow">
           <div className="flex items-center">
             <AiOutlineDollar size={40} className="mr-2 text-gray-600" />
@@ -327,7 +431,7 @@ const ShopDashboardHero = () => {
             </div>
           </div>
           <h5 className="mt-2 text-2xl font-semibold text-gray-900">
-            ${availableBalance}
+            ${availableBalance.toFixed(2)}
           </h5>
           <Link
             href="/shop/withdraw-money"
@@ -386,6 +490,57 @@ const ShopDashboardHero = () => {
             View Products
           </Link>
         </div>
+
+        <div className="bg-white shadow rounded-lg p-4 hover:shadow-lg transition-shadow">
+          <div className="flex items-center">
+            <AiOutlineClockCircle size={40} className="mr-2 text-gray-600" />
+            <div>
+              <h3 className="text-lg font-medium text-gray-700">
+                Pending Funds
+              </h3>
+              <span className="text-sm text-gray-500">
+                (awaiting delivery confirmation)
+              </span>
+            </div>
+          </div>
+          <h5 className="mt-2 text-2xl font-semibold text-gray-900">
+            ${pendingFunds}
+          </h5>
+          <Link
+            href="/shop/transactions?status=Shipped"
+            className="text-blue-600 mt-2 block hover:underline"
+          >
+            View Transaction History
+          </Link>
+        </div>
+
+        <Tooltip
+          title="Funds from withdrawal requests awaiting admin approval"
+          placement="top"
+        >
+          <div className="bg-white shadow rounded-lg p-4 hover:shadow-lg transition-shadow">
+            <div className="flex items-center">
+              <FaExchangeAlt size={30} className="mr-2 text-gray-600" />
+              <div>
+                <h3 className="text-lg font-medium text-gray-700">
+                  Pending Withdrawals
+                </h3>
+                <span className="text-sm text-gray-500">
+                  (awaiting admin approval)
+                </span>
+              </div>
+            </div>
+            <h5 className="mt-2 text-2xl font-semibold text-gray-900">
+              ${pendingBalance}
+            </h5>
+            <Link
+              href="/shop/transactions?status=Processing"
+              className="text-blue-600 mt-2 block hover:underline"
+            >
+              View Pending Withdrawals
+            </Link>
+          </div>
+        </Tooltip>
       </div>
 
       <div className="flex justify-between items-center mb-4">
@@ -397,10 +552,37 @@ const ShopDashboardHero = () => {
           View All Orders
         </Link>
       </div>
+      <div className="w-full bg-white p-4 rounded-lg shadow mb-8">
+        <DataGrid
+          rows={orderRows}
+          columns={orderColumns}
+          pageSizeOptions={[5, 10, 20]}
+          initialState={{
+            pagination: {
+              paginationModel: { pageSize: 5, page: 0 },
+            },
+          }}
+          disableRowSelectionOnClick
+          autoHeight
+          className="border-0"
+        />
+      </div>
+
+      <div className="flex justify-between items-center mb-4">
+        <h3 className="text-xl font-semibold text-gray-900">
+          Recent Transactions
+        </h3>
+        <Link
+          href="/shop/transactions"
+          className="text-blue-600 hover:underline text-sm"
+        >
+          View All Transactions
+        </Link>
+      </div>
       <div className="w-full bg-white p-4 rounded-lg shadow">
         <DataGrid
-          rows={rows}
-          columns={columns}
+          rows={transactionRows}
+          columns={transactionColumns}
           pageSizeOptions={[5, 10, 20]}
           initialState={{
             pagination: {

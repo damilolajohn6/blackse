@@ -5,12 +5,12 @@ import ShopDashboardSideBar from '@/components/shop/ShopDashboardSidebar';
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import useAuthStore from "@/store/authStore";
+import useShopStore from "@/store/shopStore";
 
 const OrderDetailsPage = () => {
 
     const router = useRouter();
-    const { seller} = useAuthStore();
+    const { seller} = useShopStore();
 
     useEffect(() => {
       if (!seller) {

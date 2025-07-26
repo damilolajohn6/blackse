@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import useShopStore from "@/store/shopStore";
 import { toast } from "react-toastify";
 import Image from "next/image";
+import ShopDashboardSideBar from "@/components/shop/ShopDashboardSidebar";
 
 export default function Settings() {
   const { seller, sellerToken, isSeller, loadShop, isLoading } = useShopStore();
@@ -20,15 +21,20 @@ export default function Settings() {
     avatar: null,
   });
   const [withdrawMethod, setWithdrawMethod] = useState({
-    type: "",
-    details: "",
+    type: "BankTransfer",
+    details: {
+      accountName: "",
+      bankName: "",
+      institutionNumber: "",
+      accountNumber: "",
+    },
   });
   const [previewAvatar, setPreviewAvatar] = useState(null);
 
   // Load seller data on mount
   useEffect(() => {
     if (!isSeller) {
-      router.push("/login");
+      router.push("/shop/login");
       toast.error("Please log in as a seller");
       return;
     }
@@ -49,7 +55,15 @@ export default function Settings() {
           avatar: null,
         });
         setWithdrawMethod(
-          result.seller.withdrawMethod || { type: "", details: "" }
+          result.seller.withdrawMethod || {
+            type: "BankTransfer",
+            details: {
+              accountName: "",
+              bankName: "",
+              institutionNumber: "",
+              accountNumber: "",
+            },
+          }
         );
         setPreviewAvatar(result.seller.avatar?.url || null);
       } else {
@@ -100,7 +114,10 @@ export default function Settings() {
   // Handle withdrawal method changes
   const handleWithdrawMethodChange = (e) => {
     const { name, value } = e.target;
-    setWithdrawMethod((prev) => ({ ...prev, [name]: value }));
+    setWithdrawMethod((prev) => ({
+      ...prev,
+      details: { ...prev.details, [name]: value },
+    }));
   };
 
   // Submit shop info updates
@@ -202,8 +219,8 @@ export default function Settings() {
   // Submit withdrawal method update
   const handleWithdrawMethodSubmit = async (e) => {
     e.preventDefault();
-    if (!withdrawMethod.type || !withdrawMethod.details) {
-      toast.error("Withdrawal method type and details are required");
+    if (!Object.values(withdrawMethod.details).every((v) => v.trim())) {
+      toast.error("All bank details are required");
       return;
     }
 
@@ -223,14 +240,14 @@ export default function Settings() {
 
       const data = await response.json();
       if (data.success) {
-        toast.success("Withdrawal method updated successfully!");
+        toast.success("Default bank details updated successfully!");
         await loadShop(); // Refresh seller data
       } else {
-        toast.error(data.message || "Failed to update withdrawal method");
+        toast.error(data.message || "Failed to update bank details");
       }
     } catch (error) {
-      console.error("Update withdrawal method error:", error);
-      toast.error("Failed to update withdrawal method");
+      console.error("Update bank details error:", error);
+      toast.error("Failed to update bank details");
     }
   };
 
@@ -250,15 +267,23 @@ export default function Settings() {
 
       const data = await response.json();
       if (data.success) {
-        toast.success("Withdrawal method deleted successfully!");
-        setWithdrawMethod({ type: "", details: "" });
+        toast.success("Default bank details deleted successfully!");
+        setWithdrawMethod({
+          type: "BankTransfer",
+          details: {
+            accountName: "",
+            bankName: "",
+            institutionNumber: "",
+            accountNumber: "",
+          },
+        });
         await loadShop(); // Refresh seller data
       } else {
-        toast.error(data.message || "Failed to delete withdrawal method");
+        toast.error(data.message || "Failed to delete bank details");
       }
     } catch (error) {
-      console.error("Delete withdrawal method error:", error);
-      toast.error("Failed to delete withdrawal method");
+      console.error("Delete bank details error:", error);
+      toast.error("Failed to delete bank details");
     }
   };
 
@@ -267,214 +292,248 @@ export default function Settings() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto p-6 bg-white shadow-md rounded-lg">
-      <h1 className="text-3xl font-bold mb-6">Shop Settings</h1>
+    <div className="">
+      <div className="flex flex-col lg:flex-row min-h-screen bg-gray-50">
+        <div className="w-[80px] 800px:w-[330px]">
+          <ShopDashboardSideBar active={9} />
+        </div>
+        <main className="flex-1 p-4 sm:p-6 lg:p-10 space-y-8">
+          <div className="max-w-4xl mx-auto p-6 bg-white shadow-md rounded-lg">
 
-      {/* Shop Information Form */}
-      <form onSubmit={handleInfoSubmit} className="space-y-6 mb-8">
-        <h2 className="text-2xl font-semibold">Shop Information</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700">
-              First Name
-            </label>
-            <input
-              type="text"
-              name="fullname.firstName"
-              value={formData.fullname.firstName}
-              onChange={handleInputChange}
-              className="mt-1 w-full p-2 border rounded-md"
-              required
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700">
-              Last Name
-            </label>
-            <input
-              type="text"
-              name="fullname.lastName"
-              value={formData.fullname.lastName}
-              onChange={handleInputChange}
-              className="mt-1 w-full p-2 border rounded-md"
-              required
-            />
-          </div>
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700">
-            Shop Name
-          </label>
-          <input
-            type="text"
-            name="name"
-            value={formData.name}
-            onChange={handleInputChange}
-            className="mt-1 w-full p-2 border rounded-md"
-            required
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700">
-            Description
-          </label>
-          <textarea
-            name="description"
-            value={formData.description}
-            onChange={handleInputChange}
-            className="mt-1 w-full p-2 border rounded-md"
-            rows={4}
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700">
-            Address
-          </label>
-          <input
-            type="text"
-            name="address"
-            value={formData.address}
-            onChange={handleInputChange}
-            className="mt-1 w-full p-2 border rounded-md"
-            required
-          />
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700">
-              Country Code
-            </label>
-            <input
-              type="text"
-              name="phoneNumber.countryCode"
-              value={formData.phoneNumber.countryCode}
-              onChange={handleInputChange}
-              className="mt-1 w-full p-2 border rounded-md"
-              placeholder="+1"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700">
-              Phone Number
-            </label>
-            <input
-              type="text"
-              name="phoneNumber.number"
-              value={formData.phoneNumber.number}
-              onChange={handleInputChange}
-              className="mt-1 w-full p-2 border rounded-md"
-              placeholder="1234567890"
-            />
-          </div>
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700">
-            Zip Code
-          </label>
-          <input
-            type="text"
-            name="zipCode"
-            value={formData.zipCode}
-            onChange={handleInputChange}
-            className="mt-1 w-full p-2 border rounded-md"
-            required
-          />
-        </div>
-        <button
-          type="submit"
-          disabled={isLoading}
-          className="w-full p-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 disabled:bg-gray-400"
-        >
-          {isLoading ? "Updating..." : "Update Shop Info"}
-        </button>
-      </form>
+            {/* Shop Information Form */}
+            <form onSubmit={handleInfoSubmit} className="space-y-6 mb-8">
+              <h2 className="text-2xl font-semibold">Shop Information</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">
+                    First Name
+                  </label>
+                  <input
+                    type="text"
+                    name="fullname.firstName"
+                    value={formData.fullname.firstName}
+                    onChange={handleInputChange}
+                    className="mt-1 w-full p-2 border rounded-md"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">
+                    Last Name
+                  </label>
+                  <input
+                    type="text"
+                    name="fullname.lastName"
+                    value={formData.fullname.lastName}
+                    onChange={handleInputChange}
+                    className="mt-1 w-full p-2 border rounded-md"
+                    required
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">
+                  Shop Name
+                </label>
+                <input
+                  type="text"
+                  name="name"
+                  value={formData.name}
+                  onChange={handleInputChange}
+                  className="mt-1 w-full p-2 border rounded-md"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">
+                  Description
+                </label>
+                <textarea
+                  name="description"
+                  value={formData.description}
+                  onChange={handleInputChange}
+                  className="mt-1 w-full p-2 border rounded-md"
+                  rows={4}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">
+                  Address
+                </label>
+                <input
+                  type="text"
+                  name="address"
+                  value={formData.address}
+                  onChange={handleInputChange}
+                  className="mt-1 w-full p-2 border rounded-md"
+                  required
+                />
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">
+                    Country Code
+                  </label>
+                  <input
+                    type="text"
+                    name="phoneNumber.countryCode"
+                    value={formData.phoneNumber.countryCode}
+                    onChange={handleInputChange}
+                    className="mt-1 w-full p-2 border rounded-md"
+                    placeholder="+1"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">
+                    Phone Number
+                  </label>
+                  <input
+                    type="text"
+                    name="phoneNumber.number"
+                    value={formData.phoneNumber.number}
+                    onChange={handleInputChange}
+                    className="mt-1 w-full p-2 border rounded-md"
+                    placeholder="1234567890"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">
+                  Zip Code
+                </label>
+                <input
+                  type="text"
+                  name="zipCode"
+                  value={formData.zipCode}
+                  onChange={handleInputChange}
+                  className="mt-1 w-full p-2 border rounded-md"
+                  required
+                />
+              </div>
+              <button
+                type="submit"
+                disabled={isLoading}
+                className="w-full p-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 disabled:bg-gray-400"
+              >
+                {isLoading ? "Updating..." : "Update Shop Info"}
+              </button>
+            </form>
 
-      {/* Avatar Update Form */}
-      <form onSubmit={handleAvatarSubmit} className="space-y-6 mb-8">
-        <h2 className="text-2xl font-semibold">Shop Avatar</h2>
-        {previewAvatar && (
-          <div className="mb-4">
-            <Image
-              src={previewAvatar}
-              alt="Shop Avatar Preview"
-              width={150}
-              height={150}
-              className="rounded-full object-cover"
-            />
-          </div>
-        )}
-        <div>
-          <label className="block text-sm font-medium text-gray-700">
-            Upload New Avatar
-          </label>
-          <input
-            type="file"
-            name="avatar"
-            accept="image/*"
-            onChange={handleAvatarChange}
-            className="mt-1 w-full p-2 border rounded-md"
-          />
-        </div>
-        <button
-          type="submit"
-          disabled={isLoading || !formData.avatar}
-          className="w-full p-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 disabled:bg-gray-400"
-        >
-          {isLoading ? "Uploading..." : "Update Avatar"}
-        </button>
-      </form>
+            {/* Avatar Update Form */}
+            <form onSubmit={handleAvatarSubmit} className="space-y-6 mb-8">
+              <h2 className="text-2xl font-semibold">Shop Avatar</h2>
+              {previewAvatar && (
+                <div className="mb-4">
+                  <Image
+                    src={previewAvatar}
+                    alt="Shop Avatar Preview"
+                    width={150}
+                    height={150}
+                    className="rounded-full object-cover"
+                  />
+                </div>
+              )}
+              <div>
+                <label className="block text-sm font-medium text-gray-700">
+                  Upload New Avatar
+                </label>
+                <input
+                  type="file"
+                  name="avatar"
+                  accept="image/*"
+                  onChange={handleAvatarChange}
+                  className="mt-1 w-full p-2 border rounded-md"
+                />
+              </div>
+              <button
+                type="submit"
+                disabled={isLoading || !formData.avatar}
+                className="w-full p-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 disabled:bg-gray-400"
+              >
+                {isLoading ? "Uploading..." : "Update Avatar"}
+              </button>
+            </form>
 
-      {/* Withdrawal Method Form */}
-      <form onSubmit={handleWithdrawMethodSubmit} className="space-y-6">
-        <h2 className="text-2xl font-semibold">Withdrawal Method</h2>
-        <div>
-          <label className="block text-sm font-medium text-gray-700">
-            Method Type
-          </label>
-          <select
-            name="type"
-            value={withdrawMethod.type}
-            onChange={handleWithdrawMethodChange}
-            className="mt-1 w-full p-2 border rounded-md"
-          >
-            <option value="">Select Method</option>
-            <option value="paypal">PayPal</option>
-            <option value="bank">Bank Transfer</option>
-          </select>
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700">
-            Details
-          </label>
-          <input
-            type="text"
-            name="details"
-            value={withdrawMethod.details}
-            onChange={handleWithdrawMethodChange}
-            className="mt-1 w-full p-2 border rounded-md"
-            placeholder="e.g., PayPal email or Bank Account Number"
-          />
-        </div>
-        <div className="flex space-x-4">
-          <button
-            type="submit"
-            disabled={isLoading}
-            className="w-full p-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 disabled:bg-gray-400"
-          >
-            {isLoading ? "Updating..." : "Update Withdrawal Method"}
-          </button>
-          {withdrawMethod.type && (
-            <button
-              type="button"
-              onClick={handleDeleteWithdrawMethod}
-              disabled={isLoading}
-              className="w-full p-2 bg-red-500 text-white rounded-md hover:bg-red-600 disabled:bg-gray-400"
-            >
-              {isLoading ? "Deleting..." : "Delete Withdrawal Method"}
-            </button>
-          )}
-        </div>
-      </form>
+            {/* Default Bank Details Form */}
+            <form onSubmit={handleWithdrawMethodSubmit} className="space-y-6">
+              <h2 className="text-2xl font-semibold">Default Bank Details</h2>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">
+                  Account Name
+                </label>
+                <input
+                  type="text"
+                  name="accountName"
+                  value={withdrawMethod.details.accountName}
+                  onChange={handleWithdrawMethodChange}
+                  className="mt-1 w-full p-2 border rounded-md"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">
+                  Bank Name
+                </label>
+                <input
+                  type="text"
+                  name="bankName"
+                  value={withdrawMethod.details.bankName}
+                  onChange={handleWithdrawMethodChange}
+                  className="mt-1 w-full p-2 border rounded-md"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">
+                  Institution Number
+                </label>
+                <input
+                  type="text"
+                  name="institutionNumber"
+                  value={withdrawMethod.details.institutionNumber}
+                  onChange={handleWithdrawMethodChange}
+                  className="mt-1 w-full p-2 border rounded-md"
+                  required
+                  maxLength={9}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">
+                  Account Number
+                </label>
+                <input
+                  type="text"
+                  name="accountNumber"
+                  value={withdrawMethod.details.accountNumber}
+                  onChange={handleWithdrawMethodChange}
+                  className="mt-1 w-full p-2 border rounded-md"
+                  required
+                  maxLength={17}
+                />
+              </div>
+              <div className="flex space-x-4">
+                <button
+                  type="submit"
+                  disabled={isLoading}
+                  className="w-full p-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 disabled:bg-gray-400"
+                >
+                  {isLoading ? "Updating..." : "Update Bank Details"}
+                </button>
+                {withdrawMethod.details.accountName && (
+                  <button
+                    type="button"
+                    onClick={handleDeleteWithdrawMethod}
+                    disabled={isLoading}
+                    className="w-full p-2 bg-red-500 text-white rounded-md hover:bg-red-600 disabled:bg-gray-400"
+                  >
+                    {isLoading ? "Deleting..." : "Delete Bank Details"}
+                  </button>
+                )}
+              </div>
+            </form>
+          </div>
+        </main>
+      </div>
     </div>
   );
 }

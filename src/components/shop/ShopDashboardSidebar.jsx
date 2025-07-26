@@ -76,10 +76,10 @@ const ShopDashboardSideBar = ({ active }) => {
         active={active === 10}
       /> */}
       <SidebarItem
-        href="/settings"
+        href="/shop/settings"
         icon={<CiSettings size={30} />}
         label="Settings"
-        active={active === 11}
+        active={active === 9}
       />
     </div>
   );

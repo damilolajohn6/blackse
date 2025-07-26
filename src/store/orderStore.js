@@ -1,7 +1,7 @@
-/* eslint-disable no-unused-vars */
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import axios from "axios";
+import { toast } from "react-toastify";
 import useShopStore from "./shopStore";
 
 const API_BASE_URL =
@@ -17,7 +17,8 @@ const api = axios.create({
 // Request interceptor to add auth token
 api.interceptors.request.use(
   (config) => {
-    const token = useOrderStore.getState().token;
+    const token =
+      useOrderStore.getState().token || useShopStore.getState().sellerToken;
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -33,19 +34,14 @@ api.interceptors.response.use(
     const message =
       error.response?.data?.message || error.message || "An error occurred";
 
-    // Handle different error types
     if (error.response?.status === 401) {
-      // Token expired or invalid
       useOrderStore.getState().clearAuth();
       window.location.href = "/login";
     } else if (error.response?.status === 403) {
-      // Forbidden
       throw new Error("You don't have permission to perform this action");
     } else if (error.response?.status === 404) {
-      // Not found
       throw new Error("Resource not found");
     } else if (error.response?.status >= 500) {
-      // Server error
       throw new Error("Server error. Please try again later.");
     }
 
@@ -59,17 +55,23 @@ const useOrderStore = create(
       // State
       orders: [],
       currentOrder: null,
+      transactions: [], // Updated to include bank-specific withdrawal details
+      availableBalance: 0,
       isLoading: false,
       error: null,
       total: 0,
       page: 1,
       pages: 1,
       limit: 10,
+      transactionTotal: 0,
+      transactionPage: 1,
+      transactionPages: 1,
       filters: {
         status: "",
         startDate: "",
         endDate: "",
         search: "",
+        transactionType: "",
       },
       sortBy: "createdAt",
       sortOrder: "desc",
@@ -103,7 +105,94 @@ const useOrderStore = create(
 
       setLimit: (limit) => set({ limit }),
 
-      // Fetch seller orders with enhanced filtering and sorting
+      setTransactionPage: (page) => set({ transactionPage: page }),
+
+      // Fetch shop transaction history
+      fetchShopTransactions: async (shopId, params = {}) => {
+        set({ isLoading: true, error: null });
+        const { page = 1, limit = 10, startDate, endDate, type } = params;
+        const sellerToken = get().token || useShopStore.getState().sellerToken;
+
+        if (!sellerToken) {
+          console.error("fetchShopTransactions: No seller token available", {
+            shopId,
+            params,
+          });
+          set({ isLoading: false, error: "No seller token available" });
+          toast.error("Authentication required. Please log in.");
+          return { success: false, message: "No seller token available" };
+        }
+
+        try {
+          console.debug("fetchShopTransactions request:", {
+            url: `${API_BASE_URL}/order/shop/transactions/${shopId}`,
+            params,
+            token: sellerToken.substring(0, 20) + "...",
+          });
+          const res = await api.get(
+            `${API_BASE_URL}/order/shop/transactions/${shopId}`,
+            {
+              params: { page, limit, startDate, endDate, type },
+            }
+          );
+          set({
+            transactions: res.data.transactions.map((tx) => ({
+              ...tx,
+              withdrawMethod: tx.withdrawId
+                ? {
+                    type: "BankTransfer",
+                    details: tx.metadata?.withdrawMethod?.details || {},
+                  }
+                : undefined,
+            })),
+            availableBalance: res.data.availableBalance,
+            transactionTotal: res.data.total,
+            transactionPage: res.data.page,
+            transactionPages: res.data.pages,
+            isLoading: false,
+          });
+          console.info("fetchShopTransactions: Transactions fetched", {
+            shopId,
+            transactionCount: res.data.transactions.length,
+            page,
+            limit,
+            type,
+            startDate,
+            endDate,
+          });
+          toast.success("Transaction history loaded successfully!");
+          return {
+            success: true,
+            transactions: res.data.transactions,
+            availableBalance: res.data.availableBalance,
+            total: res.data.total,
+            page: res.data.page,
+            pages: res.data.pages,
+          };
+        } catch (error) {
+          console.error("fetchShopTransactions error:", {
+            message: error.message,
+            status: error.response?.status,
+            data: error.response?.data,
+            shopId,
+          });
+          const message =
+            error.response?.data?.message || "Failed to fetch transactions";
+          set({
+            isLoading: false,
+            error: message,
+            transactions: [],
+            availableBalance: 0,
+            transactionTotal: 0,
+            transactionPage: 1,
+            transactionPages: 1,
+          });
+          toast.error(message);
+          return { success: false, message };
+        }
+      },
+
+      // Existing actions (unchanged, included for completeness)
       fetchSellerOrders: async (shopId, token, params = {}) => {
         set({ isLoading: true, error: null });
         const {
@@ -112,7 +201,6 @@ const useOrderStore = create(
           sortBy = "createdAt",
           sortOrder = "desc",
         } = params;
-        // Use token from useShopStore if not provided
         const sellerToken = token || useShopStore.getState().sellerToken;
 
         if (!sellerToken) {
@@ -138,7 +226,13 @@ const useOrderStore = create(
               withCredentials: true,
             }
           );
-          set({ orders: res.data.orders, isLoading: false });
+          set({
+            orders: res.data.orders,
+            total: res.data.total,
+            page: res.data.page,
+            pages: res.data.pages,
+            isLoading: false,
+          });
           console.info("fetchSellerOrders: Orders fetched", {
             shopId,
             orderCount: res.data.orders.length,
@@ -164,33 +258,35 @@ const useOrderStore = create(
         }
       },
 
-      // Fetch single order details
       fetchOrderById: async (orderId) => {
         set({ isLoading: true, error: null });
 
         try {
           const response = await api.get(`/order/provider/order/${orderId}`);
-
           set({
             currentOrder: response.data.order,
             isLoading: false,
           });
-
+          console.info("fetchOrderById: Order fetched", { orderId });
           return response.data.order;
         } catch (error) {
+          console.error("fetchOrderById error:", {
+            message: error.message,
+            status: error.response?.status,
+            orderId,
+          });
           set({
             error: error.message,
             isLoading: false,
             currentOrder: null,
           });
+          toast.error(error.message);
           throw error;
         }
       },
 
-      // Fetch shop statistics
       fetchShopStats: async (shopId, token) => {
         set({ isLoading: true, error: null });
-        // Use token from useShopStore if not provided
         const sellerToken = token || useShopStore.getState().sellerToken;
 
         if (!sellerToken) {
@@ -206,12 +302,8 @@ const useOrderStore = create(
             url: `${API_BASE_URL}/order/shop/stats/${shopId}`,
             token: sellerToken.substring(0, 20) + "...",
           });
-          const res = await axios.get(
-            `${API_BASE_URL}/order/shop/stats/${shopId}`,
-            {
-              headers: { Authorization: `Bearer ${sellerToken}` },
-              withCredentials: true,
-            }
+          const res = await api.get(
+            `${API_BASE_URL}/order/shop/stats/${shopId}`
           );
           set({ stats: res.data.stats, isLoading: false });
           console.info("fetchShopStats: Stats fetched", {
@@ -237,20 +329,17 @@ const useOrderStore = create(
         }
       },
 
-      // Update order status with validation
       updateOrderStatus: async (
         orderId,
         status,
         reason,
         courier,
         courierSlug,
-        trackingNumber,
-        token
+        trackingNumber
       ) => {
         set({ isLoading: true, error: null });
 
         try {
-          // Validate required fields
           if (!orderId || !status) {
             throw new Error("Order ID and status are required");
           }
@@ -268,7 +357,7 @@ const useOrderStore = create(
 
           if (status === "Shipped") {
             payload.courier = courier;
-            payload.courierSlug = courierSlug || "other"; // Allow custom slug
+            payload.courierSlug = courierSlug || "other";
             payload.trackingNumber = trackingNumber;
           }
 
@@ -277,7 +366,6 @@ const useOrderStore = create(
             payload
           );
 
-          // Update the order in the current orders list
           set((state) => ({
             orders: state.orders.map((order) =>
               order._id === orderId
@@ -290,76 +378,103 @@ const useOrderStore = create(
                 : state.currentOrder,
             isLoading: false,
           }));
-
+          console.info("updateOrderStatus: Order status updated", {
+            orderId,
+            status,
+          });
+          toast.success(`Order status updated to ${status}`);
           return response.data.order;
         } catch (error) {
+          console.error("updateOrderStatus error:", {
+            message: error.message,
+            status: error.response?.status,
+            orderId,
+          });
           set({
             error: error.message,
             isLoading: false,
           });
+          toast.error(error.message);
           throw error;
         }
       },
 
-      // Approve refund
-      approveRefund: async (orderId, reason, token) => {
+      approveRefund: async (orderId, refundId, reason) => {
         set({ isLoading: true, error: null });
 
         try {
-          if (!orderId || !reason?.trim()) {
+          if (!orderId || !refundId || !reason?.trim()) {
             throw new Error(
-              "Order ID and reason are required for refund approval"
+              "Order ID, refund ID, and reason are required for refund approval"
             );
           }
 
           const response = await api.put(
             `/order/order-refund-success/${orderId}`,
             {
-              status: "Refund Success",
+              status: "Approved",
+              refundId,
               reason: reason.trim(),
             }
           );
 
-          // Update the order in the current orders list
           set((state) => ({
             orders: state.orders.map((order) =>
               order._id === orderId
-                ? { ...order, status: "Refund Success" }
+                ? {
+                    ...order,
+                    status: "Refund Success",
+                    refundHistory: response.data.order.refundHistory,
+                  }
                 : order
             ),
             currentOrder:
               state.currentOrder?._id === orderId
-                ? { ...state.currentOrder, status: "Refund Success" }
+                ? {
+                    ...state.currentOrder,
+                    status: "Refund Success",
+                    refundHistory: response.data.order.refundHistory,
+                  }
                 : state.currentOrder,
             isLoading: false,
           }));
-
+          console.info("approveRefund: Refund approved", { orderId, refundId });
+          toast.success("Refund approved successfully");
           return response.data;
         } catch (error) {
+          console.error("approveRefund error:", {
+            message: error.message,
+            status: error.response?.status,
+            orderId,
+          });
           set({
             error: error.message,
             isLoading: false,
           });
+          toast.error(error.message);
           throw error;
         }
       },
 
-      // Reject refund
-      rejectRefund: async (orderId, reason, token) => {
+      rejectRefund: async (orderId, refundId, reason) => {
         set({ isLoading: true, error: null });
 
         try {
-          if (!orderId || !reason?.trim()) {
+          if (!orderId || !refundId || !reason?.trim()) {
             throw new Error(
-              "Order ID and reason are required for refund rejection"
+              "Order ID, refund ID, and reason are required for refund rejection"
             );
           }
 
-          const response = await api.put(`/order/reject-refund/${orderId}`, {
-            reason: reason.trim(),
-          });
+          const response = await api.put(
+            `/order/order-refund-success/${orderId}`,
+            {
+              status: "Rejected",
+              refundId,
+              reason: reason.trim(),
+            }
+          );
 
-          // Update the order in the current orders list
           set((state) => ({
             orders: state.orders.map((order) =>
               order._id === orderId
@@ -372,19 +487,25 @@ const useOrderStore = create(
                 : state.currentOrder,
             isLoading: false,
           }));
-
+          console.info("rejectRefund: Refund rejected", { orderId, refundId });
+          toast.success("Refund rejected successfully");
           return response.data;
         } catch (error) {
+          console.error("rejectRefund error:", {
+            message: error.message,
+            status: error.response?.status,
+            orderId,
+          });
           set({
             error: error.message,
             isLoading: false,
           });
+          toast.error(error.message);
           throw error;
         }
       },
 
-      // Bulk update orders
-      bulkUpdateOrders: async (orderIds, status, reason, token) => {
+      bulkUpdateOrders: async (orderIds, status, reason) => {
         set({ isLoading: true, error: null });
 
         try {
@@ -400,26 +521,34 @@ const useOrderStore = create(
             reason: reason || "",
           });
 
-          // Update the orders in the current orders list
           set((state) => ({
             orders: state.orders.map((order) =>
               orderIds.includes(order._id) ? { ...order, status } : order
             ),
             isLoading: false,
           }));
-
+          console.info("bulkUpdateOrders: Orders updated", {
+            orderIds,
+            status,
+          });
+          toast.success(`Updated ${orderIds.length} orders to ${status}`);
           return response.data;
         } catch (error) {
+          console.error("bulkUpdateOrders error:", {
+            message: error.message,
+            status: error.response?.status,
+            orderIds,
+          });
           set({
             error: error.message,
             isLoading: false,
           });
+          toast.error(error.message);
           throw error;
         }
       },
 
-      // Export orders
-      exportOrders: async (shopId, filters, token) => {
+      exportOrders: async (shopId, filters) => {
         set({ isLoading: true, error: null });
 
         try {
@@ -433,7 +562,6 @@ const useOrderStore = create(
             responseType: "blob",
           });
 
-          // Create download link
           const url = window.URL.createObjectURL(new Blob([response.data]));
           const link = document.createElement("a");
           link.href = url;
@@ -447,18 +575,25 @@ const useOrderStore = create(
           window.URL.revokeObjectURL(url);
 
           set({ isLoading: false });
+          console.info("exportOrders: Orders exported", { shopId });
+          toast.success("Orders exported successfully");
           return true;
         } catch (error) {
+          console.error("exportOrders error:", {
+            message: error.message,
+            status: error.response?.status,
+            shopId,
+          });
           set({
             error: error.message,
             isLoading: false,
           });
+          toast.error(error.message);
           throw error;
         }
       },
 
-      // Send order notification
-      sendOrderNotification: async (orderId, type, message, token) => {
+      sendOrderNotification: async (orderId, type, message) => {
         set({ isLoading: true, error: null });
 
         try {
@@ -471,18 +606,28 @@ const useOrderStore = create(
           );
 
           set({ isLoading: false });
+          console.info("sendOrderNotification: Notification sent", {
+            orderId,
+            type,
+          });
+          toast.success("Notification sent successfully");
           return response.data;
         } catch (error) {
+          console.error("sendOrderNotification error:", {
+            message: error.message,
+            status: error.response?.status,
+            orderId,
+          });
           set({
             error: error.message,
             isLoading: false,
           });
+          toast.error(error.message);
           throw error;
         }
       },
 
-      // Get order analytics
-      getOrderAnalytics: async (shopId, timeRange, token) => {
+      getOrderAnalytics: async (shopId, timeRange) => {
         set({ isLoading: true, error: null });
 
         try {
@@ -497,33 +642,47 @@ const useOrderStore = create(
             },
             isLoading: false,
           });
-
+          console.info("getOrderAnalytics: Analytics fetched", {
+            shopId,
+            timeRange,
+          });
           return response.data.analytics;
         } catch (error) {
+          console.error("getOrderAnalytics error:", {
+            message: error.message,
+            status: error.response?.status,
+            shopId,
+          });
           set({
             error: error.message,
             isLoading: false,
           });
+          toast.error(error.message);
           throw error;
         }
       },
 
-      // Reset store
       reset: () =>
         set({
           orders: [],
           currentOrder: null,
+          transactions: [],
+          availableBalance: 0,
           isLoading: false,
           error: null,
           total: 0,
           page: 1,
           pages: 1,
           limit: 10,
+          transactionTotal: 0,
+          transactionPage: 1,
+          transactionPages: 1,
           filters: {
             status: "",
             startDate: "",
             endDate: "",
             search: "",
+            transactionType: "",
           },
           sortBy: "createdAt",
           sortOrder: "desc",
@@ -538,7 +697,6 @@ const useOrderStore = create(
           },
         }),
 
-      // Utility functions
       getOrderById: (orderId) => {
         return get().orders.find((order) => order._id === orderId);
       },
@@ -560,7 +718,6 @@ const useOrderStore = create(
           .length;
       },
 
-      // Real-time order updates (for WebSocket integration)
       updateOrderRealtime: (updatedOrder) => {
         set((state) => ({
           orders: state.orders.map((order) =>
@@ -571,14 +728,17 @@ const useOrderStore = create(
               ? updatedOrder
               : state.currentOrder,
         }));
+        console.info("updateOrderRealtime: Order updated", {
+          orderId: updatedOrder._id,
+        });
       },
 
-      // Add new order (for real-time notifications)
       addNewOrder: (newOrder) => {
         set((state) => ({
           orders: [newOrder, ...state.orders],
           total: state.total + 1,
         }));
+        console.info("addNewOrder: New order added", { orderId: newOrder._id });
       },
     }),
     {

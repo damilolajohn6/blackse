@@ -3,17 +3,9 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import useShopStore from "@/store/shopStore";
+import useOrderStore from "@/store/orderStore";
 import { toast } from "react-toastify";
-import {
-  Button,
-  TextField,
-  MenuItem,
-  FormControl,
-  InputLabel,
-  Select,
-  CircularProgress,
-  Typography,
-} from "@mui/material";
+import { Button, TextField, CircularProgress, Typography } from "@mui/material";
 import axios from "axios";
 
 const API_BASE_URL =
@@ -21,13 +13,14 @@ const API_BASE_URL =
 
 const WithdrawRequest = () => {
   const { seller, sellerToken, isSeller } = useShopStore();
+  const { availableBalance } = useOrderStore();
   const router = useRouter();
   const [amount, setAmount] = useState("");
-  const [method, setMethod] = useState("");
   const [details, setDetails] = useState({
-    accountNumber: "",
+    accountName: "",
     bankName: "",
-    email: "",
+    institutionNumber: "",
+    accountNumber: "",
   });
   const [isLoading, setIsLoading] = useState(false);
 
@@ -44,9 +37,23 @@ const WithdrawRequest = () => {
       return;
     }
 
-    const withdrawMethod = { type: method, details };
-    if (!method || !Object.values(details).some((v) => v)) {
-      toast.error("Please select a withdrawal method and provide details");
+    if (amount > availableBalance) {
+      toast.error("Insufficient available balance");
+      return;
+    }
+
+    const withdrawMethod = {
+      type: "BankTransfer",
+      details: {
+        accountName: details.accountName,
+        bankName: details.bankName,
+        institutionNumber: details.institutionNumber,
+        accountNumber: details.accountNumber,
+      },
+    };
+
+    if (!Object.values(details).every((v) => v.trim())) {
+      toast.error("Please provide all bank details");
       return;
     }
 
@@ -62,9 +69,13 @@ const WithdrawRequest = () => {
       );
       toast.success("Withdrawal request created successfully!");
       setAmount("");
-      setMethod("");
-      setDetails({ accountNumber: "", bankName: "", email: "" });
-      router.push("/shop/dashboard");
+      setDetails({
+        accountName: "",
+        bankName: "",
+        institutionNumber: "",
+        accountNumber: "",
+      });
+      router.push("/shop/transactions");
     } catch (error) {
       const errorMessage =
         error.response?.data?.message || "Failed to create withdrawal request";
@@ -78,13 +89,18 @@ const WithdrawRequest = () => {
     }
   };
 
+  const handleDetailsChange = (e) => {
+    const { name, value } = e.target;
+    setDetails((prev) => ({ ...prev, [name]: value }));
+  };
+
   return (
     <div className="w-full max-w-md mx-auto p-6">
       <Typography variant="h5" className="font-semibold mb-6">
         Create Withdrawal Request
       </Typography>
       <Typography variant="body1" className="mb-4">
-        Available Balance: ${seller?.availableBalance?.toFixed(2) || "0.00"}
+        Available Balance: ${availableBalance.toFixed(2)}
       </Typography>
       <form onSubmit={handleSubmit} className="space-y-4">
         <TextField
@@ -96,61 +112,40 @@ const WithdrawRequest = () => {
           required
           inputProps={{ min: 10, max: 10000, step: 0.01 }}
         />
-        <FormControl fullWidth>
-          <InputLabel>Method</InputLabel>
-          <Select
-            value={method}
-            onChange={(e) => setMethod(e.target.value)}
-            label="Method"
-            required
-          >
-            <MenuItem value="BankTransfer">Bank Transfer</MenuItem>
-            <MenuItem value="PayPal">PayPal</MenuItem>
-            <MenuItem value="Other">Other</MenuItem>
-          </Select>
-        </FormControl>
-        {method === "BankTransfer" && (
-          <>
-            <TextField
-              label="Account Number"
-              fullWidth
-              value={details.accountNumber}
-              onChange={(e) =>
-                setDetails({ ...details, accountNumber: e.target.value })
-              }
-              required
-            />
-            <TextField
-              label="Bank Name"
-              fullWidth
-              value={details.bankName}
-              onChange={(e) =>
-                setDetails({ ...details, bankName: e.target.value })
-              }
-              required
-            />
-          </>
-        )}
-        {method === "PayPal" && (
-          <TextField
-            label="PayPal Email"
-            fullWidth
-            value={details.email}
-            onChange={(e) => setDetails({ ...details, email: e.target.value })}
-            required
-          />
-        )}
-        {method === "Other" && (
-          <TextField
-            label="Details"
-            fullWidth
-            value={details.description}
-            onChange={(e) =>
-              setDetails({ ...details, description: e.target.value })
-            }
-            required
-          />
-        )}
+        <TextField
+          label="Account Name"
+          name="accountName"
+          fullWidth
+          value={details.accountName}
+          onChange={handleDetailsChange}
+          required
+        />
+        <TextField
+          label="Bank Name"
+          name="bankName"
+          fullWidth
+          value={details.bankName}
+          onChange={handleDetailsChange}
+          required
+        />
+        <TextField
+          label="Institution Number"
+          name="institutionNumber"
+          fullWidth
+          value={details.institutionNumber}
+          onChange={handleDetailsChange}
+          required
+          inputProps={{ maxLength: 9 }}
+        />
+        <TextField
+          label="Account Number"
+          name="accountNumber"
+          fullWidth
+          value={details.accountNumber}
+          onChange={handleDetailsChange}
+          required
+          inputProps={{ maxLength: 17 }}
+        />
         <Button
           type="submit"
           variant="contained"

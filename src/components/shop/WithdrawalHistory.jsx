@@ -108,11 +108,24 @@ const WithdrawalHistory = () => {
 
   const handleExport = () => {
     const csvRows = [
-      ["ID", "Amount", "Method", "Status", "Created At", "Processed At"],
+      [
+        "ID",
+        "Amount",
+        "Account Name",
+        "Bank Name",
+        "Institution Number",
+        "Account Number",
+        "Status",
+        "Created At",
+        "Processed At",
+      ],
       ...withdrawals.map((w) => [
         w._id,
         `$${w.amount.toFixed(2)}`,
-        w.withdrawMethod.type,
+        w.withdrawMethod.details.accountName,
+        w.withdrawMethod.details.bankName,
+        w.withdrawMethod.details.institutionNumber,
+        w.withdrawMethod.details.accountNumber,
         w.status,
         format(new Date(w.createdAt), "yyyy-MM-dd"),
         w.processedAt ? format(new Date(w.processedAt), "yyyy-MM-dd") : "",
@@ -217,7 +230,10 @@ const WithdrawalHistory = () => {
               >
                 Amount {sortBy === "amount" && (order === "asc" ? "↑" : "↓")}
               </TableCell>
-              <TableCell>Method</TableCell>
+              <TableCell>Account Name</TableCell>
+              <TableCell>Bank Name</TableCell>
+              <TableCell>Institution Number</TableCell>
+              <TableCell>Account Number</TableCell>
               <TableCell
                 onClick={() => handleSort("status")}
                 className="cursor-pointer"
@@ -238,7 +254,7 @@ const WithdrawalHistory = () => {
           <TableBody>
             {isFetching ? (
               <TableRow>
-                <TableCell colSpan={7} className="text-center">
+                <TableCell colSpan={10} className="text-center">
                   Loading...
                 </TableCell>
               </TableRow>
@@ -247,7 +263,18 @@ const WithdrawalHistory = () => {
                 <TableRow key={withdraw._id}>
                   <TableCell>{withdraw._id}</TableCell>
                   <TableCell>${withdraw.amount.toFixed(2)}</TableCell>
-                  <TableCell>{withdraw.withdrawMethod.type}</TableCell>
+                  <TableCell>
+                    {withdraw.withdrawMethod.details.accountName}
+                  </TableCell>
+                  <TableCell>
+                    {withdraw.withdrawMethod.details.bankName}
+                  </TableCell>
+                  <TableCell>
+                    {withdraw.withdrawMethod.details.institutionNumber}
+                  </TableCell>
+                  <TableCell>
+                    {withdraw.withdrawMethod.details.accountNumber}
+                  </TableCell>
                   <TableCell>
                     <Chip
                       label={withdraw.status}
@@ -284,7 +311,7 @@ const WithdrawalHistory = () => {
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={7} className="text-center">
+                <TableCell colSpan={10} className="text-center">
                   No withdrawals found
                 </TableCell>
               </TableRow>
@@ -322,14 +349,20 @@ const WithdrawalHistory = () => {
                 <strong>Amount:</strong> ${selectedWithdrawal.amount.toFixed(2)}
               </Typography>
               <Typography>
-                <strong>Method:</strong>{" "}
-                {selectedWithdrawal.withdrawMethod.type}
+                <strong>Account Name:</strong>{" "}
+                {selectedWithdrawal.withdrawMethod.details.accountName}
               </Typography>
               <Typography>
-                <strong>Method Details:</strong>{" "}
-                {Object.entries(selectedWithdrawal.withdrawMethod.details)
-                  .map(([key, value]) => `${key}: ${value}`)
-                  .join(", ")}
+                <strong>Bank Name:</strong>{" "}
+                {selectedWithdrawal.withdrawMethod.details.bankName}
+              </Typography>
+              <Typography>
+                <strong>Institution Number:</strong>{" "}
+                {selectedWithdrawal.withdrawMethod.details.institutionNumber}
+              </Typography>
+              <Typography>
+                <strong>Account Number:</strong>{" "}
+                {selectedWithdrawal.withdrawMethod.details.accountNumber}
               </Typography>
               <Typography>
                 <strong>Status:</strong> {selectedWithdrawal.status}
