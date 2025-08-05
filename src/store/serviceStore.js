@@ -513,9 +513,6 @@ const useServiceProviderStore = create(
 
         fetchMessages: async (userId, page = 1, limit = 20) => {
           try {
-<<<<<<< HEAD
-            const data = await apiCall(`/service-provider/get-messages-with-user/${userId}?page=${page}&limit=${limit}`);
-=======
             console.log("Fetching messages for userId:", userId);
 
             const data = await apiCall(
@@ -524,7 +521,6 @@ const useServiceProviderStore = create(
 
             console.log("Messages API response:", data);
 
->>>>>>> 38c48969b4c24bdb4a7ecb1b44ee2ee7764e0532
             set((state) => {
               // Ensure messages array exists and sort by creation time
               const messagesArray = Array.isArray(data.messages)

@@ -86,7 +86,6 @@ const Messages = () => {
 
       try {
         console.log("Fetching conversations...");
-        // Use the correct endpoint from your backend
         await fetchConversations({
           page: 1,
           limit: 20,
@@ -104,7 +103,6 @@ const Messages = () => {
       loadConversations();
     } else if (mounted) {
       console.warn("No serviceProvider ID available");
-      // Don't show error toast immediately, user might still be loading
     }
   }, [fetchConversations, serviceProvider, mounted]);
 
@@ -153,60 +151,6 @@ const Messages = () => {
     setShowConversationMenu(null);
   };
 
-<<<<<<< HEAD
-  const data = {
-    success: true,
-    conversations: [
-      {
-        _id: "688e1a799e9be22849d623c0",
-        members: [
-          {
-            fullname: {
-              firstName: "John",
-              lastName: "Damilola"
-            },
-            avatar: {
-              public_id: "srr5a3lm9zypvre2qdbk",
-              url: "https://res.cloudinary.com/dilhmmvz6/image/upload/v1750922614/srr5a3lm9zypvre2qdbk.jpg"
-            },
-            _id: "687022c061d3534b94127048"
-          }
-        ],
-        memberModel: "ServiceProvider",
-        isGroup: false,
-        lastMessage: "Hello, I need plumbing services",
-        lastMessageId: {
-          _id: "688e1a789e9be22849d623bd",
-          content: "Hello, I need plumbing services",
-          media: [],
-          isDeleted: false,
-          createdAt: "2025-08-02T14:02:32.777Z"
-        },
-        isArchived: {},
-        createdAt: "2025-08-02T14:02:33.081Z",
-        __v: 0
-      }
-    ],
-    totalConversations: 1,
-    page: 1,
-    totalPages: 1
-  }
-
-  // data or conversation const filteredConversations = data?.conversations || [];
-
-  const filteredConversations = conversations.filter((conversation) => {
-    const otherUser = conversation.members.find(
-      (member) => member._id !== conversation.serviceProvider
-    );
-
-    const fullName = `${otherUser?.fullname?.firstName ?? ""} ${otherUser?.fullname?.lastName ?? ""}`;
-
-    return fullName.toLowerCase().includes(searchTerm.toLowerCase());
-  });
-
-  console.log(filteredConversations);
-
-=======
   // Helper function to get other user from conversation
   const getOtherUserFromConversation = (conversation) => {
     if (!conversation.members || !Array.isArray(conversation.members)) {
@@ -214,7 +158,6 @@ const Messages = () => {
       return null;
     }
 
-    // Handle case where members array has proper user objects
     const otherUser = conversation.members.find((member) => {
       const memberId = member._id || member;
       return (
@@ -246,7 +189,6 @@ const Messages = () => {
   });
 
   // Get current messages for selected user
->>>>>>> 38c48969b4c24bdb4a7ecb1b44ee2ee7764e0532
   const currentMessages = selectedUserId ? messages[selectedUserId] || [] : [];
 
   // Find selected user info
@@ -345,13 +287,6 @@ const Messages = () => {
               </div>
             ) : (
               filteredConversations.map((conversation) => {
-<<<<<<< HEAD
-                const otherUser = conversation.members.find(
-                  (member) => member._id !== conversation.serviceProvider
-                );
-                const isSelected = selectedUserId === otherUser._id;
-                const fullName = `${otherUser.fullname?.firstName ?? ""} ${otherUser.fullname?.lastName ?? ""}`;
-=======
                 const otherUser = getOtherUserFromConversation(conversation);
                 if (!otherUser) return null;
 
@@ -364,30 +299,13 @@ const Messages = () => {
                   otherUser.email ||
                   "Unknown User";
 
-                // Handle avatar URL with fallback
                 const avatarUrl =
                   otherUser.avatar?.url || "/api/placeholder/40/40";
->>>>>>> 38c48969b4c24bdb4a7ecb1b44ee2ee7764e0532
 
                 return (
                   <div
                     key={conversation._id}
                     onClick={() => handleSelectConversation(otherUser._id)}
-<<<<<<< HEAD
-                    className={`p-4 border-b border-gray-100 cursor-pointer hover:bg-gray-50 ${isSelected ? "bg-indigo-50 border-r-2 border-r-indigo-500" : ""
-                      }`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-3">
-                        <img
-                          src={otherUser.avatar?.url || "/default-avatar.png"}
-                          alt={fullName}
-                          className="w-10 h-10 rounded-full object-cover"
-                        />
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-gray-900 truncate">
-                            {fullName}
-=======
                     className={`p-4 border-b border-gray-100 cursor-pointer hover:bg-gray-50 transition-colors ${
                       isSelected
                         ? "bg-indigo-50 border-r-2 border-r-indigo-500"
@@ -405,13 +323,11 @@ const Messages = () => {
                               e.target.src = "/api/placeholder/40/40";
                             }}
                           />
-                          {/* Online indicator - you can add online status logic here */}
                           <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-white"></div>
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-medium text-gray-900 truncate">
                             {displayName}
->>>>>>> 38c48969b4c24bdb4a7ecb1b44ee2ee7764e0532
                           </p>
                           <p className="text-xs text-gray-500 truncate">
                             {conversation.lastMessageId?.content ||
@@ -422,9 +338,6 @@ const Messages = () => {
                       </div>
                       <div className="flex flex-col items-end">
                         <span className="text-xs text-gray-400">
-<<<<<<< HEAD
-                          {new Date(conversation.createdAt).toLocaleDateString()}
-=======
                           {conversation.updatedAt
                             ? new Date(conversation.updatedAt).toLocaleString(
                                 [],
@@ -436,7 +349,6 @@ const Messages = () => {
                                 }
                               )
                             : ""}
->>>>>>> 38c48969b4c24bdb4a7ecb1b44ee2ee7764e0532
                         </span>
                         {conversation.unreadCount > 0 && (
                           <span className="bg-indigo-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center mt-1">
@@ -532,47 +444,6 @@ const Messages = () => {
                     <p>No messages yet. Start the conversation!</p>
                   </div>
                 ) : (
-<<<<<<< HEAD
-                  currentMessages.map((message) => {
-                    const isSentByServiceProvider = message.senderModel === "ServiceProvider";
-
-                    return (
-                      <div
-                        key={message._id}
-                        className={`flex ${isSentByServiceProvider ? "justify-end" : "justify-start"}`}
-                      >
-                        <div
-                          className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${isSentByServiceProvider
-                              ? "bg-indigo-500 text-white"
-                              : "bg-gray-200 text-gray-900"
-                            }`}
-                        >
-                          <p className="text-sm">{message.content}</p>
-
-                          {message.media?.length > 0 && (
-                            <div className="mt-2 space-y-2">
-                              {message.media.map((url, i) => (
-                                <img
-                                  key={i}
-                                  src={url}
-                                  alt="attachment"
-                                  className="rounded-md max-w-full h-auto"
-                                />
-                              ))}
-                            </div>
-                          )}
-
-                          <p
-                            className={`text-xs mt-1 ${isSentByServiceProvider ? "text-indigo-100" : "text-gray-500"
-                              }`}
-                          >
-                            {new Date(message.createdAt).toLocaleTimeString()}
-                          </p>
-                        </div>
-                      </div>
-                    );
-                  })
-=======
                   <>
                     {currentMessages.map((message, index) => {
                       const isFromServiceProvider =
@@ -672,7 +543,6 @@ const Messages = () => {
                     })}
                     <div ref={messagesEndRef} />
                   </>
->>>>>>> 38c48969b4c24bdb4a7ecb1b44ee2ee7764e0532
                 )}
               </div>
 
