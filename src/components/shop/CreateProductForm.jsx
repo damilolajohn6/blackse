@@ -13,7 +13,7 @@ const CreateProductForm = () => {
   const { seller, isSeller, sellerToken } = useShopStore();
   const router = useRouter();
   const params = useParams();
-  const productId = params.id;
+  const productId = params?.id;
   const isEditing = !!productId;
 
   const [isLoading, setIsLoading] = useState(false);
@@ -45,17 +45,23 @@ const CreateProductForm = () => {
       endDate: "",
       stockLimit: "",
     },
+    videos: [],
   };
 
   const [formData, setFormData] = useState(initialFormData);
   const [images, setImages] = useState([]);
   const [imagePreviews, setImagePreviews] = useState([]);
+  const [videos, setVideos] = useState([]);
+  const [videoPreviews, setVideoPreviews] = useState([]);
   const [variations, setVariations] = useState([]);
   const [newVariation, setNewVariation] = useState({
     name: "",
     options: "",
     price: "",
     stock: "",
+    image: null,
+    imagePreview: "",
+    imageUploading: false,
   });
   const [categories, setCategories] = useState({ primary: [], cultural: [] });
 
@@ -65,10 +71,11 @@ const CreateProductForm = () => {
         const { data } = await axios.get(
           `${API_BASE_URL}/product/get-categories`
         );
-        setCategories(data.categories);
+        setCategories(data.categories || { primary: [], cultural: [] });
       } catch (error) {
         console.error("Fetch categories error:", error.message);
         toast.error("Failed to load categories");
+        setCategories({ primary: [], cultural: [] });
       }
     };
     fetchCategories();
@@ -112,7 +119,7 @@ const CreateProductForm = () => {
             price: product.price?.toString() || "",
             priceDiscount: product.priceDiscount?.toString() || "",
             stock: product.stock?.toString() || "",
-            tags: product.tags?.join(", ") || "",
+            tags: Array.isArray(product.tags) ? product.tags.join(", ") : "",
             isMadeInCanada: product.isMadeInCanada || false,
             canadianCertification: product.canadianCertification || "",
             shipping: {
@@ -138,10 +145,13 @@ const CreateProductForm = () => {
                 : "",
               stockLimit: product.flashSale?.stockLimit?.toString() || "",
             },
+            videos: product.videos || [],
           });
 
           setImages(product.images || []);
           setImagePreviews(product.images?.map((img) => img.url) || []);
+          setVideos(product.videos || []);
+          setVideoPreviews(product.videos?.map((vid) => vid.url) || []);
           setVariations(product.variations || []);
         } catch (error) {
           console.error("Fetch product error:", {
@@ -150,19 +160,13 @@ const CreateProductForm = () => {
             data: error.response?.data,
             productId,
           });
-          setFetchError(
+          const errorMessage =
             error.response?.data?.message ||
-              `Failed to load product data (Status: ${
-                error.response?.status || "unknown"
-              })`
-          );
-          toast.error(
-            error.response?.data?.message ||
-              `Failed to load product data (Status: ${
-                error.response?.status || "unknown"
-              })`,
-            { toastId: "fetch-error" }
-          );
+            `Failed to load product data (Status: ${
+              error.response?.status || "unknown"
+            })`;
+          setFetchError(errorMessage);
+          toast.error(errorMessage, { toastId: "fetch-error" });
         } finally {
           setIsLoading(false);
         }
@@ -173,52 +177,82 @@ const CreateProductForm = () => {
 
   const validateForm = () => {
     const newErrors = {};
-    if (!formData.name) newErrors.name = "Name is required";
-    if (formData.name.length > 100)
+
+    // Basic validation
+    if (!formData.name?.trim()) {
+      newErrors.name = "Name is required";
+    } else if (formData.name.length > 100) {
       newErrors.name = "Name must be 100 characters or less";
-    if (formData.name.length < 5 && formData.name)
+    } else if (formData.name.length < 5) {
       newErrors.name = "Name must be at least 5 characters";
-    if (!formData.description)
+    }
+
+    if (!formData.description?.trim()) {
       newErrors.description = "Description is required";
-    if (formData.categories.length === 0)
+    }
+
+    if (
+      !Array.isArray(formData.categories) ||
+      formData.categories.length === 0
+    ) {
       newErrors.categories = "At least one category is required";
-    if (!formData.price || Number(formData.price) <= 0)
+    }
+
+    const price = parseFloat(formData.price);
+    if (!formData.price || isNaN(price) || price <= 0) {
       newErrors.price = "Price must be positive";
-    if (
-      formData.priceDiscount &&
-      Number(formData.priceDiscount) >= Number(formData.price)
-    )
-      newErrors.priceDiscount = "Discount must be less than price";
-    if (!formData.stock || Number(formData.stock) < 0)
+    }
+
+    if (formData.priceDiscount) {
+      const discount = parseFloat(formData.priceDiscount);
+      if (isNaN(discount) || discount >= price) {
+        newErrors.priceDiscount = "Discount must be less than price";
+      }
+    }
+
+    const stock = parseInt(formData.stock);
+    if (!formData.stock || isNaN(stock) || stock < 0) {
       newErrors.stock = "Stock cannot be negative";
-    if (images.length === 0)
+    }
+
+    if (!Array.isArray(images) || images.length === 0) {
       newErrors.images = "At least one image is required";
-    if (
-      formData.flashSale.isActive &&
-      (!formData.flashSale.discountPrice ||
+    }
+
+    // Flash sale validation
+    if (formData.flashSale.isActive) {
+      if (
+        !formData.flashSale.discountPrice ||
         !formData.flashSale.startDate ||
         !formData.flashSale.endDate ||
-        !formData.flashSale.stockLimit)
-    )
-      newErrors.flashSale = "All flash sale fields are required when active";
-    if (
-      formData.flashSale.discountPrice &&
-      Number(formData.flashSale.discountPrice) >= Number(formData.price)
-    )
-      newErrors.flashSaleDiscountPrice =
-        "Flash sale price must be less than regular price";
-    if (
-      formData.flashSale.startDate &&
-      formData.flashSale.endDate &&
-      new Date(formData.flashSale.startDate) >=
-        new Date(formData.flashSale.endDate)
-    )
-      newErrors.flashSaleDates = "End date must be after start date";
+        !formData.flashSale.stockLimit
+      ) {
+        newErrors.flashSale = "All flash sale fields are required when active";
+      }
+
+      if (formData.flashSale.discountPrice) {
+        const flashPrice = parseFloat(formData.flashSale.discountPrice);
+        if (isNaN(flashPrice) || flashPrice >= price) {
+          newErrors.flashSaleDiscountPrice =
+            "Flash sale price must be less than regular price";
+        }
+      }
+
+      if (formData.flashSale.startDate && formData.flashSale.endDate) {
+        const startDate = new Date(formData.flashSale.startDate);
+        const endDate = new Date(formData.flashSale.endDate);
+        if (startDate >= endDate) {
+          newErrors.flashSaleDates = "End date must be after start date";
+        }
+      }
+    }
+
     return newErrors;
   };
 
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
+
     if (name.includes("shipping.")) {
       const [parent, field] = name.split(".");
       setFormData((prev) => ({
@@ -252,6 +286,8 @@ const CreateProductForm = () => {
         [name]: type === "checkbox" ? checked : value,
       }));
     }
+
+    // Clear error for this field
     setErrors((prev) => ({ ...prev, [name]: "" }));
   };
 
@@ -279,34 +315,168 @@ const CreateProductForm = () => {
     setNewVariation((prev) => ({ ...prev, [name]: value }));
   };
 
+  const handleVariationImageChange = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please select an image file");
+      return;
+    }
+
+    // Validate file size (5MB limit)
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Image size must be less than 5MB");
+      return;
+    }
+
+    setNewVariation((prev) => ({ ...prev, imageUploading: true }));
+
+    try {
+      const formDataToUpload = new FormData();
+      formDataToUpload.append("file", file);
+      formDataToUpload.append("upload_preset", "gdmugccy");
+      formDataToUpload.append(
+        "cloud_name",
+        process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME
+      );
+
+      const res = await fetch(
+        `https://api.cloudinary.com/v1_1/${process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME}/image/upload`,
+        {
+          method: "POST",
+          body: formDataToUpload,
+        }
+      );
+
+      const data = await res.json();
+      if (!data.secure_url) {
+        throw new Error("Image upload failed");
+      }
+
+      setNewVariation((prev) => ({
+        ...prev,
+        image: { url: data.secure_url, public_id: data.public_id },
+        imagePreview: data.secure_url,
+        imageUploading: false,
+      }));
+
+      toast.success("Variation image uploaded successfully");
+    } catch (error) {
+      console.error("Variation image upload error:", error);
+      toast.error("Failed to upload variation image");
+      setNewVariation((prev) => ({ ...prev, imageUploading: false }));
+    }
+  };
+
+  const removeVariationImage = async () => {
+    if (newVariation.image?.public_id) {
+      try {
+        await axios.post(
+          `${API_BASE_URL}/product/delete-image`,
+          { public_id: newVariation.image.public_id },
+          {
+            withCredentials: true,
+            headers: {
+              Authorization: sellerToken ? `Bearer ${sellerToken}` : undefined,
+            },
+          }
+        );
+      } catch (error) {
+        console.error("Delete variation image error:", error);
+        toast.error("Failed to delete image from cloud storage");
+      }
+    }
+
+    setNewVariation((prev) => ({
+      ...prev,
+      image: null,
+      imagePreview: "",
+    }));
+    toast.success("Variation image removed");
+  };
+
   const addVariation = () => {
     if (
-      !newVariation.name ||
-      !newVariation.options ||
+      !newVariation.name?.trim() ||
+      !newVariation.options?.trim() ||
       !newVariation.price ||
       !newVariation.stock
     ) {
-      toast.error("Please fill all variation fields");
+      toast.error("Please fill all required variation fields");
       return;
     }
-    setVariations((prev) => [
-      ...prev,
-      {
-        name: newVariation.name,
-        options: newVariation.options.split(",").map((opt) => opt.trim()),
-        price: Number(newVariation.price),
-        stock: Number(newVariation.stock),
-      },
-    ]);
-    setNewVariation({ name: "", options: "", price: "", stock: "" });
+
+    const price = parseFloat(newVariation.price);
+    const stock = parseInt(newVariation.stock);
+
+    if (isNaN(price) || price < 0) {
+      toast.error("Please enter a valid price");
+      return;
+    }
+
+    if (isNaN(stock) || stock < 0) {
+      toast.error("Please enter a valid stock number");
+      return;
+    }
+
+    const variation = {
+      name: newVariation.name.trim(),
+      options: newVariation.options
+        .split(",")
+        .map((opt) => opt.trim())
+        .filter((opt) => opt),
+      price: price,
+      stock: stock,
+    };
+
+    // Add image if provided
+    if (newVariation.image) {
+      variation.image = newVariation.image;
+    }
+
+    setVariations((prev) => [...prev, variation]);
+    setNewVariation({
+      name: "",
+      options: "",
+      price: "",
+      stock: "",
+      image: null,
+      imagePreview: "",
+      imageUploading: false,
+    });
+    toast.success("Variation added successfully");
   };
 
-  const removeVariation = (index) => {
+  const removeVariation = async (index) => {
+    const variation = variations[index];
+
+    // Delete variation image from cloud if it exists
+    if (variation.image?.public_id) {
+      try {
+        await axios.post(
+          `${API_BASE_URL}/product/delete-image`,
+          { public_id: variation.image.public_id },
+          {
+            withCredentials: true,
+            headers: {
+              Authorization: sellerToken ? `Bearer ${sellerToken}` : undefined,
+            },
+          }
+        );
+      } catch (error) {
+        console.error("Delete variation image error:", error);
+        toast.error("Failed to delete variation image from cloud storage");
+      }
+    }
+
     setVariations((prev) => prev.filter((_, i) => i !== index));
+    toast.success("Variation removed successfully");
   };
 
   const handleImageChange = async (e) => {
-    const files = Array.from(e.target.files);
+    const files = Array.from(e.target.files || []);
     if (images.length + files.length > 5) {
       toast.error("Maximum 5 images allowed");
       return;
@@ -318,6 +488,18 @@ const CreateProductForm = () => {
 
     try {
       for (const file of files) {
+        // Validate file type
+        if (!file.type.startsWith("image/")) {
+          toast.error(`${file.name} is not an image file`);
+          continue;
+        }
+
+        // Validate file size (10MB limit)
+        if (file.size > 10 * 1024 * 1024) {
+          toast.error(`${file.name} is too large. Maximum size is 10MB`);
+          continue;
+        }
+
         const formDataToUpload = new FormData();
         formDataToUpload.append("file", file);
         formDataToUpload.append("upload_preset", "gdmugccy");
@@ -335,22 +517,82 @@ const CreateProductForm = () => {
         );
         const data = await res.json();
         if (!data.secure_url) {
-          throw new Error("Image upload failed");
+          throw new Error(`Image upload failed for ${file.name}`);
         }
         newImages.push({ url: data.secure_url, public_id: data.public_id });
-        newPreviews.push(URL.createObjectURL(file));
+        newPreviews.push(data.secure_url);
       }
 
-      setImages((prev) => [...prev, ...newImages]);
-      setImagePreviews((prev) => [...prev, ...newPreviews]);
-      setErrors((prev) => ({ ...prev, images: "" }));
+      if (newImages.length > 0) {
+        setImages((prev) => [...prev, ...newImages]);
+        setImagePreviews((prev) => [...prev, ...newPreviews]);
+        setErrors((prev) => ({ ...prev, images: "" }));
+        toast.success(`${newImages.length} image(s) uploaded successfully`);
+      }
     } catch (error) {
-      console.error("Image upload error:", {
-        message: error.message,
-        status: error.response?.status,
-        data: error.response?.data,
-      });
+      console.error("Image upload error:", error);
       toast.error(error.message || "Failed to upload images");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleVideoChange = async (e) => {
+    const files = Array.from(e.target.files || []);
+    if (videos.length + files.length > 3) {
+      toast.error("Maximum 3 videos allowed");
+      return;
+    }
+
+    setIsLoading(true);
+    const newVideos = [];
+    const newVideoPreviews = [];
+
+    try {
+      for (const file of files) {
+        // Validate file type
+        if (!file.type.startsWith("video/")) {
+          toast.error(`${file.name} is not a video file`);
+          continue;
+        }
+
+        // Validate file size (100MB limit)
+        if (file.size > 100 * 1024 * 1024) {
+          toast.error(`${file.name} exceeds 100MB limit`);
+          continue;
+        }
+
+        const formDataToUpload = new FormData();
+        formDataToUpload.append("file", file);
+        formDataToUpload.append("upload_preset", "gdmugccy");
+        formDataToUpload.append(
+          "cloud_name",
+          process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME
+        );
+
+        const res = await fetch(
+          `https://api.cloudinary.com/v1_1/${process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME}/video/upload`,
+          {
+            method: "POST",
+            body: formDataToUpload,
+          }
+        );
+        const data = await res.json();
+        if (!data.secure_url) {
+          throw new Error(`Video upload failed for ${file.name}`);
+        }
+        newVideos.push({ url: data.secure_url, public_id: data.public_id });
+        newVideoPreviews.push(data.secure_url);
+      }
+
+      if (newVideos.length > 0) {
+        setVideos((prev) => [...prev, ...newVideos]);
+        setVideoPreviews((prev) => [...prev, ...newVideoPreviews]);
+        toast.success(`${newVideos.length} video(s) uploaded successfully`);
+      }
+    } catch (error) {
+      console.error("Video upload error:", error);
+      toast.error(error.message || "Failed to upload videos");
     } finally {
       setIsLoading(false);
     }
@@ -358,7 +600,7 @@ const CreateProductForm = () => {
 
   const removeImage = async (index) => {
     const image = images[index];
-    if (image.public_id) {
+    if (image?.public_id) {
       try {
         await axios.post(
           `${API_BASE_URL}/product/delete-image`,
@@ -371,24 +613,42 @@ const CreateProductForm = () => {
           }
         );
       } catch (error) {
-        console.error("Delete image error:", {
-          message: error.message,
-          status: error.response?.status,
-          data: error.response?.data,
-          public_id: image.public_id,
-        });
-        toast.error(
-          error.response?.data?.message ||
-            "Failed to delete image from Cloudinary"
-        );
+        console.error("Delete image error:", error);
+        toast.error("Failed to delete image from cloud storage");
       }
     }
     setImages((prev) => prev.filter((_, i) => i !== index));
     setImagePreviews((prev) => prev.filter((_, i) => i !== index));
+    toast.success("Image deleted successfully");
+  };
+
+  const removeVideo = async (index) => {
+    const video = videos[index];
+    if (video?.public_id) {
+      try {
+        await axios.post(
+          `${API_BASE_URL}/product/delete-video`,
+          { public_id: video.public_id },
+          {
+            withCredentials: true,
+            headers: {
+              Authorization: sellerToken ? `Bearer ${sellerToken}` : undefined,
+            },
+          }
+        );
+      } catch (error) {
+        console.error("Delete video error:", error);
+        toast.error("Failed to delete video from cloud storage");
+      }
+    }
+    setVideos((prev) => prev.filter((_, i) => i !== index));
+    setVideoPreviews((prev) => prev.filter((_, i) => i !== index));
+    toast.success("Video deleted successfully");
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
     if (!seller?._id || !sellerToken) {
       toast.error("Please log in as a seller", { toastId: "auth-error" });
       router.push("/shop/login");
@@ -412,45 +672,52 @@ const CreateProductForm = () => {
           url: img.url,
           public_id: img.public_id,
         })),
+        videos: videos.map((vid) => ({
+          url: vid.url,
+          public_id: vid.public_id,
+        })),
         tags: formData.tags
-          ? formData.tags.split(",").map((tag) => tag.trim())
+          ? formData.tags
+              .split(",")
+              .map((tag) => tag.trim())
+              .filter((tag) => tag)
           : [],
         culturalCategories: formData.culturalCategory
           ? [formData.culturalCategory]
           : [],
-        price: Number(formData.price),
+        price: parseFloat(formData.price),
         priceDiscount: formData.priceDiscount
-          ? Number(formData.priceDiscount)
+          ? parseFloat(formData.priceDiscount)
           : undefined,
-        stock: Number(formData.stock),
+        stock: parseInt(formData.stock),
         shipping: {
           ...formData.shipping,
           weight: formData.shipping.weight
-            ? Number(formData.shipping.weight)
+            ? parseFloat(formData.shipping.weight)
             : undefined,
           dimensions: {
             length: formData.shipping.dimensions.length
-              ? Number(formData.shipping.dimensions.length)
+              ? parseFloat(formData.shipping.dimensions.length)
               : undefined,
             width: formData.shipping.dimensions.width
-              ? Number(formData.shipping.dimensions.width)
+              ? parseFloat(formData.shipping.dimensions.width)
               : undefined,
             height: formData.shipping.dimensions.height
-              ? Number(formData.shipping.dimensions.height)
+              ? parseFloat(formData.shipping.dimensions.height)
               : undefined,
           },
           cost: formData.shipping.cost
-            ? Number(formData.shipping.cost)
+            ? parseFloat(formData.shipping.cost)
             : undefined,
         },
         variations: variations.length > 0 ? variations : undefined,
         flashSale: {
           ...formData.flashSale,
           discountPrice: formData.flashSale.discountPrice
-            ? Number(formData.flashSale.discountPrice)
+            ? parseFloat(formData.flashSale.discountPrice)
             : undefined,
           stockLimit: formData.flashSale.stockLimit
-            ? Number(formData.flashSale.stockLimit)
+            ? parseInt(formData.flashSale.stockLimit)
             : undefined,
           startDate: formData.flashSale.startDate
             ? new Date(formData.flashSale.startDate)
@@ -461,11 +728,12 @@ const CreateProductForm = () => {
         },
       };
 
+      let response;
       if (isEditing) {
         if (!productId || !/^[0-9a-fA-F]{24}$/.test(productId)) {
           throw new Error("Invalid product ID");
         }
-        const response = await axios.put(
+        response = await axios.put(
           `${API_BASE_URL}/product/update-product/${productId}`,
           productData,
           {
@@ -477,7 +745,7 @@ const CreateProductForm = () => {
         );
         toast.success(response.data.message || "Product updated successfully!");
       } else {
-        const response = await axios.post(
+        response = await axios.post(
           `${API_BASE_URL}/product/create-product`,
           productData,
           {
@@ -490,25 +758,32 @@ const CreateProductForm = () => {
         toast.success(response.data.message || "Product created successfully!");
       }
 
+      // Reset form
       setFormData(initialFormData);
       setImages([]);
       setImagePreviews([]);
+      setVideos([]);
+      setVideoPreviews([]);
       setVariations([]);
+      setNewVariation({
+        name: "",
+        options: "",
+        price: "",
+        stock: "",
+        image: null,
+        imagePreview: "",
+        imageUploading: false,
+      });
       setErrors({});
       router.push("/shop/products");
     } catch (error) {
-      console.error(`${isEditing ? "Update" : "Create"} product error:`, {
-        message: error.message,
-        status: error.response?.status,
-        data: error.response?.data,
-        productId: isEditing ? productId : undefined,
-      });
-      toast.error(
+      console.error(`${isEditing ? "Update" : "Create"} product error:`, error);
+      const errorMessage =
         error.response?.data?.message ||
-          `Failed to ${isEditing ? "update" : "create"} product (Status: ${
-            error.response?.status || "unknown"
-          })`
-      );
+        `Failed to ${isEditing ? "update" : "create"} product (Status: ${
+          error.response?.status || "unknown"
+        })`;
+      toast.error(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -792,6 +1067,7 @@ const CreateProductForm = () => {
                   multiple
                   onChange={handleImageChange}
                   className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                  disabled={isLoading}
                 />
                 <div className="text-center">
                   <svg
@@ -815,6 +1091,9 @@ const CreateProductForm = () => {
               </div>
               {errors.images && (
                 <p className="text-red-500 text-sm mt-1">{errors.images}</p>
+              )}
+              {isLoading && (
+                <p className="text-center text-gray-600 mt-2">Uploading...</p>
               )}
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
@@ -850,90 +1129,279 @@ const CreateProductForm = () => {
             </div>
           </div>
 
+          {/* Videos */}
+          <div className="space-y-6">
+            <h3 className="text-xl font-semibold text-gray-900">
+              Product Videos
+            </h3>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Upload Videos (Max 3, 100MB each)
+              </label>
+              <div className="relative border-2 border-dashed border-gray-300 rounded-lg p-6 hover:border-blue-500 transition-all duration-200">
+                <input
+                  type="file"
+                  accept="video/*"
+                  multiple
+                  onChange={handleVideoChange}
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                  disabled={isLoading}
+                />
+                <div className="text-center">
+                  <svg
+                    className="mx-auto h-12 w-12 text-gray-400"
+                    stroke="currentColor"
+                    fill="none"
+                    viewBox="0 0 48 48"
+                    aria-hidden="true"
+                  >
+                    <path
+                      d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                  <p className="mt-1 text-sm text-gray-600">
+                    Drag and drop videos here, or click to select files
+                  </p>
+                </div>
+              </div>
+              {isLoading && (
+                <p className="text-center text-gray-600 mt-2">Uploading...</p>
+              )}
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+              {videoPreviews.map((preview, index) => (
+                <div key={index} className="relative group">
+                  <video
+                    src={preview}
+                    controls
+                    className="h-32 w-full object-cover rounded-lg shadow-md"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => removeVideo(index)}
+                    className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+                  >
+                    <svg
+                      className="h-4 w-4"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="M6 18L18 6M6 6l12 12"
+                      ></path>
+                    </svg>
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+
           {/* Variations */}
           <div className="space-y-6">
             <h3 className="text-xl font-semibold text-gray-900">Variations</h3>
-            <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Variation Name
-                </label>
-                <input
-                  type="text"
-                  name="name"
-                  value={newVariation.name}
-                  onChange={handleVariationChange}
-                  className="w-full px-4 py-3 rounded-lg border-2 border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 focus:outline-none transition-all duration-200"
-                  placeholder="e.g., Size, Color"
-                />
+            <div className="bg-gray-50 p-6 rounded-lg">
+              <h4 className="text-lg font-medium text-gray-900 mb-4">
+                Add New Variation
+              </h4>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Variation Name
+                  </label>
+                  <input
+                    type="text"
+                    name="name"
+                    value={newVariation.name}
+                    onChange={handleVariationChange}
+                    className="w-full px-4 py-3 rounded-lg border-2 border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 focus:outline-none transition-all duration-200"
+                    placeholder="e.g., Size, Color"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Options (comma-separated)
+                  </label>
+                  <input
+                    type="text"
+                    name="options"
+                    value={newVariation.options}
+                    onChange={handleVariationChange}
+                    className="w-full px-4 py-3 rounded-lg border-2 border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 focus:outline-none transition-all duration-200"
+                    placeholder="e.g., Small, Medium, Large"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Price
+                  </label>
+                  <input
+                    type="number"
+                    name="price"
+                    value={newVariation.price}
+                    onChange={handleVariationChange}
+                    className="w-full px-4 py-3 rounded-lg border-2 border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 focus:outline-none transition-all duration-200"
+                    min="0"
+                    step="0.01"
+                    placeholder="0.00"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Stock
+                  </label>
+                  <input
+                    type="number"
+                    name="stock"
+                    value={newVariation.stock}
+                    onChange={handleVariationChange}
+                    className="w-full px-4 py-3 rounded-lg border-2 border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 focus:outline-none transition-all duration-200"
+                    min="0"
+                    placeholder="0"
+                  />
+                </div>
               </div>
-              <div>
+
+              {/* Variation Image Upload */}
+              <div className="mb-4">
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Options (comma-separated)
+                  Variation Image (Optional)
                 </label>
-                <input
-                  type="text"
-                  name="options"
-                  value={newVariation.options}
-                  onChange={handleVariationChange}
-                  className="w-full px-4 py-3 rounded-lg border-2 border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 focus:outline-none transition-all duration-200"
-                  placeholder="e.g., Small, Medium, Large"
-                />
+                {!newVariation.imagePreview ? (
+                  <div className="relative border-2 border-dashed border-gray-300 rounded-lg p-4 hover:border-blue-500 transition-all duration-200">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleVariationImageChange}
+                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                      disabled={newVariation.imageUploading}
+                    />
+                    <div className="text-center">
+                      <svg
+                        className="mx-auto h-8 w-8 text-gray-400"
+                        stroke="currentColor"
+                        fill="none"
+                        viewBox="0 0 48 48"
+                        aria-hidden="true"
+                      >
+                        <path
+                          d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      </svg>
+                      <p className="mt-1 text-sm text-gray-600">
+                        {newVariation.imageUploading
+                          ? "Uploading..."
+                          : "Click to upload variation image"}
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="relative inline-block">
+                    <img
+                      src={newVariation.imagePreview}
+                      alt="Variation preview"
+                      className="h-20 w-20 object-cover rounded-lg shadow-md"
+                    />
+                    <button
+                      type="button"
+                      onClick={removeVariationImage}
+                      className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 transition-colors duration-200"
+                    >
+                      <svg
+                        className="h-3 w-3"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth="2"
+                          d="M6 18L18 6M6 6l12 12"
+                        ></path>
+                      </svg>
+                    </button>
+                  </div>
+                )}
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Price
-                </label>
-                <input
-                  type="number"
-                  name="price"
-                  value={newVariation.price}
-                  onChange={handleVariationChange}
-                  className="w-full px-4 py-3 rounded-lg border-2 border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 focus:outline-none transition-all duration-200"
-                  min="0"
-                  step="0.01"
-                  placeholder="0.00"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Stock
-                </label>
-                <input
-                  type="number"
-                  name="stock"
-                  value={newVariation.stock}
-                  onChange={handleVariationChange}
-                  className="w-full px-4 py-3 rounded-lg border-2 border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 focus:outline-none transition-all duration-200"
-                  min="0"
-                  placeholder="0"
-                />
-              </div>
+
+              <button
+                type="button"
+                onClick={addVariation}
+                disabled={newVariation.imageUploading}
+                className={`inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-lg text-white transition-colors duration-200 ${
+                  newVariation.imageUploading
+                    ? "bg-gray-400 cursor-not-allowed"
+                    : "bg-blue-600 hover:bg-blue-700"
+                }`}
+              >
+                {newVariation.imageUploading
+                  ? "Uploading Image..."
+                  : "Add Variation"}
+              </button>
             </div>
-            <button
-              type="button"
-              onClick={addVariation}
-              className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-lg text-white bg-blue-600 hover:bg-blue-700 transition-colors duration-200"
-            >
-              Add Variation
-            </button>
+
             {variations.length > 0 && (
-              <div className="mt-4 space-y-2">
+              <div className="space-y-4">
+                <h4 className="text-lg font-medium text-gray-900">
+                  Current Variations
+                </h4>
                 {variations.map((variation, index) => (
                   <div
                     key={index}
-                    className="flex justify-between items-center py-3 px-4 bg-gray-50 rounded-lg"
+                    className="flex justify-between items-start py-4 px-6 bg-gray-50 rounded-lg"
                   >
-                    <p className="text-sm text-gray-700">
-                      {variation.name}: {variation.options.join(", ")} - $
-                      {variation.price.toFixed(2)}, Stock: {variation.stock}
-                    </p>
+                    <div className="flex items-start space-x-4">
+                      {variation.image && (
+                        <img
+                          src={variation.image.url}
+                          alt={`${variation.name} variation`}
+                          className="h-16 w-16 object-cover rounded-lg shadow-md flex-shrink-0"
+                        />
+                      )}
+                      <div>
+                        <p className="font-medium text-gray-900">
+                          {variation.name}
+                        </p>
+                        <p className="text-sm text-gray-600">
+                          Options: {variation.options.join(", ")}
+                        </p>
+                        <p className="text-sm text-gray-600">
+                          Price: ${variation.price.toFixed(2)} | Stock:{" "}
+                          {variation.stock}
+                        </p>
+                      </div>
+                    </div>
                     <button
                       type="button"
                       onClick={() => removeVariation(index)}
-                      className="text-red-500 hover:text-red-700 transition-colors duration-200"
+                      className="text-red-500 hover:text-red-700 transition-colors duration-200 flex-shrink-0"
                     >
-                      Remove
+                      <svg
+                        className="h-5 w-5"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth="2"
+                          d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                        ></path>
+                      </svg>
                     </button>
                   </div>
                 ))}

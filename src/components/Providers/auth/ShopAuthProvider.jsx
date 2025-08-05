@@ -32,7 +32,7 @@ export default function ShopAuthProvider({ children }) {
   }, [loadShop, router]);
 
   if (isLoading) {
-    return <div>Loading...</div>;
+    return <div>Load or not...</div>;
   }
 
   return <>{children}</>;

@@ -19,6 +19,15 @@ import {
   FaSortUp,
   FaSortDown,
 } from "react-icons/fa";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 
 const STATUS_TRANSITIONS = {
   Pending: ["Confirmed", "Cancelled"],
@@ -346,8 +355,8 @@ const OrderManagement = () => {
   }
 
   return (
-    <div className="container mx-auto p-4">
-      <div className="flex justify-between items-center mb-6">
+    <div className="">
+      <div className="flex justify-between items-center mb-4">
         <h1 className="text-3xl font-bold">Order Management</h1>
         <div className="flex gap-2">
           <button
@@ -399,12 +408,12 @@ const OrderManagement = () => {
       <div className="mb-6 bg-white p-6 rounded-lg shadow-sm border">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <Label className="block text-sm font-medium text-gray-700 mb-2">
               Search Orders
-            </label>
+            </Label>
             <div className="relative">
               <FaSearch className="absolute left-3 top-3 text-gray-400" />
-              <input
+              <Input
                 type="text"
                 placeholder="Search by order ID, customer..."
                 value={searchTerm}
@@ -414,28 +423,32 @@ const OrderManagement = () => {
             </div>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <Label className="block text-sm font-medium text-gray-700 mb-2">
               Status
-            </label>
-            <select
+            </Label>
+            <Select
               name="status"
               value={filters.status}
               onChange={handleFilterChange}
               className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
             >
-              <option value="">All Statuses</option>
-              {statusOptions.map((status) => (
-                <option key={status} value={status}>
-                  {status}
-                </option>
-              ))}
-            </select>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="All Statuses" />
+              </SelectTrigger>
+              <SelectContent>
+                {statusOptions.map((status) => (
+                  <SelectItem key={status} value={status}>
+                    {status}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <Label className="block text-sm font-medium text-gray-700 mb-2">
               Start Date
-            </label>
-            <input
+            </Label>
+            <Input
               type="date"
               name="startDate"
               value={filters.startDate}
@@ -447,7 +460,7 @@ const OrderManagement = () => {
             <label className="block text-sm font-medium text-gray-700 mb-2">
               End Date
             </label>
-            <input
+            <Input
               type="date"
               name="endDate"
               value={filters.endDate}
@@ -458,19 +471,24 @@ const OrderManagement = () => {
         </div>
         <div className="flex items-center gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <Label className="block text-sm font-medium text-gray-700 mb-2">
               Items per page
-            </label>
-            <select
+            </Label>
+            <Select
               value={limit}
               onChange={(e) => setLimit(Number(e.target.value))}
               className="rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
             >
-              <option value={10}>10</option>
-              <option value={25}>25</option>
-              <option value={50}>50</option>
-              <option value={100}>100</option>
-            </select>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="10" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={10}>10</SelectItem>
+                <SelectItem value={25}>25</SelectItem>
+                <SelectItem value={50}>50</SelectItem>
+                <SelectItem value={100}>100</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </div>
       </div>

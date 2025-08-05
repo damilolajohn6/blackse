@@ -1,9 +1,9 @@
 "use client";
-
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import useShopStore from "@/store/shopStore";
 import { toast } from "react-toastify";
+import Loading from "@/app/loading";
 
 export default function ShopAuthProvider({ children }) {
   const { loadShop, isSeller, seller } = useShopStore();
@@ -32,7 +32,9 @@ export default function ShopAuthProvider({ children }) {
   }, [loadShop, router]);
 
   if (isLoading) {
-    return <div>Loading...</div>;
+    return <div className="grid place-content-center min-h-screen">
+      <Loading />
+    </div>;
   }
 
   return <>{children}</>;

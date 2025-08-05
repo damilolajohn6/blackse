@@ -58,7 +58,7 @@ const ShopActivationPage = () => {
   };
 
   return (
-    <div className="bg-white shadow-sm rounded-lg p-6">
+    <div className="bg-white shadow-sm rounded-lg p-6 max-w-md mx-auto">
       <h2 className="text-2xl font-bold text-gray-900 mb-4">
         Activate Your Shop
       </h2>

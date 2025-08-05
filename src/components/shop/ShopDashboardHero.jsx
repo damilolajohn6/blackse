@@ -17,6 +17,14 @@ import { MdPendingActions } from "react-icons/md";
 import { Button, Tooltip } from "@mui/material";
 import { DataGrid } from "@mui/x-data-grid";
 import { FaChartLine, FaExchangeAlt } from "react-icons/fa";
+import { Poppins, Jost } from "next/font/google";
+
+const jost = Jost(
+  { 
+    subsets: ["latin"], 
+    weight: ["100", "200", "300", "400", "500", "600", "700", "800"]
+  }, 
+)
 
 const ShopDashboardHero = () => {
   const { seller, isSeller, sellerToken, checkAuth, loadShop, refreshToken } =
@@ -413,19 +421,19 @@ const ShopDashboardHero = () => {
     })) || [];
 
   return (
-    <div className="w-full p-6 md:p-8">
+    <div className="w-full">
       <h3 className="text-2xl font-semibold text-gray-900 pb-4">
         Shop Dashboard
       </h3>
       <div className="w-full grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mb-8">
-        <div className="bg-white shadow rounded-lg p-4 hover:shadow-lg transition-shadow">
+        <div className="bg-white shadow rounded-lg p-4 hover:shadow-lg transition-shadow flex flex-col justify-between">
           <div className="flex items-center">
             <AiOutlineDollar size={40} className="mr-2 text-gray-600" />
             <div>
               <h3 className="text-lg font-medium text-gray-700">
                 Account Balance
               </h3>
-              <span className="text-sm text-gray-500">
+              <span className={`text-sm text-gray-500 ${jost.className}`}>
                 (with 10% service charge)
               </span>
             </div>
@@ -435,13 +443,13 @@ const ShopDashboardHero = () => {
           </h5>
           <Link
             href="/shop/withdraw-money"
-            className="text-blue-600 mt-2 block hover:underline"
+            className={`text-blue-600 mt-2 block hover:underline ${jost.className}`}
           >
             Withdraw Money
           </Link>
         </div>
 
-        <div className="bg-white shadow rounded-lg p-4 hover:shadow-lg transition-shadow">
+        <div className="bg-white shadow rounded-lg p-4 hover:shadow-lg transition-shadow flex flex-col justify-between">
           <div className="flex items-center">
             <FaChartLine size={30} className="mr-2 text-gray-600" />
             <h3 className="text-lg font-medium text-gray-700">Total Sales</h3>
@@ -451,13 +459,13 @@ const ShopDashboardHero = () => {
           </h5>
           <Link
             href="/shop/orders"
-            className="text-blue-600 mt-2 block hover:underline"
+            className={`text-blue-600 mt-2 block hover:underline ${jost.className}`}
           >
             View Orders
           </Link>
         </div>
 
-        <div className="bg-white shadow rounded-lg p-4 hover:shadow-lg transition-shadow">
+        <div className="bg-white shadow rounded-lg p-4 hover:shadow-lg transition-shadow flex flex-col justify-between">
           <div className="flex items-center">
             <MdPendingActions size={30} className="mr-2 text-gray-600" />
             <h3 className="text-lg font-medium text-gray-700">
@@ -469,13 +477,13 @@ const ShopDashboardHero = () => {
           </h5>
           <Link
             href="/shop/orders?status=Pending"
-            className="text-blue-600 mt-2 block hover:underline"
+            className={`text-blue-600 mt-2 block hover:underline ${jost.className}`}
           >
             Manage Orders
           </Link>
         </div>
 
-        <div className="bg-white shadow rounded-lg p-4 hover:shadow-lg transition-shadow">
+        <div className="bg-white shadow rounded-lg p-4 hover:shadow-lg transition-shadow flex flex-col justify-between">
           <div className="flex items-center">
             <AiOutlineShoppingCart size={30} className="mr-2 text-gray-600" />
             <h3 className="text-lg font-medium text-gray-700">All Products</h3>
@@ -485,7 +493,7 @@ const ShopDashboardHero = () => {
           </h5>
           <Link
             href="/shop/products"
-            className="text-blue-600 mt-2 block hover:underline"
+            className={`text-blue-600 mt-2 block hover:underline ${jost.className}`}
           >
             View Products
           </Link>
@@ -498,7 +506,7 @@ const ShopDashboardHero = () => {
               <h3 className="text-lg font-medium text-gray-700">
                 Pending Funds
               </h3>
-              <span className="text-sm text-gray-500">
+              <span className={`text-sm text-gray-500  ${jost.className}`}>
                 (awaiting delivery confirmation)
               </span>
             </div>
@@ -525,7 +533,7 @@ const ShopDashboardHero = () => {
                 <h3 className="text-lg font-medium text-gray-700">
                   Pending Withdrawals
                 </h3>
-                <span className="text-sm text-gray-500">
+                <span className={"text-sm text-gray-500" + " " + jost.className}>
                   (awaiting admin approval)
                 </span>
               </div>
@@ -535,7 +543,7 @@ const ShopDashboardHero = () => {
             </h5>
             <Link
               href="/shop/transactions?status=Processing"
-              className="text-blue-600 mt-2 block hover:underline"
+              className={`text-blue-600 mt-2 block hover:underline ${jost.className}`}
             >
               View Pending Withdrawals
             </Link>

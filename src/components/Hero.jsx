@@ -1,6 +1,16 @@
 import React from "react";
 import Link from "next/link";
 import styles from "@/styles/styles";
+import { Poppins } from "next/font/google";
+import Image from "next/image";
+
+const poppins = Poppins(
+  { 
+    subsets: ["latin"], 
+    weight: ["100", "200", "300", "400", "500", "600", "700", "800"]
+  }, 
+)
+
 const Hero = () => {
   return (
     <div
@@ -12,11 +22,11 @@ const Hero = () => {
     >
       <div className={`${styles.section} w-[90%] 800px:w-[60%]`}>
         <h1
-          className={`text-[35px] leading-[1.2] 800px:text-[60px] text-[#3d3a3a] font-[600] capitalize`}
+          className={`text-[35px] leading-[1.2] 800px:text-[60px] text-[#3d3a3a] font-bold capitalize`}
         >
           Best Collection for <br /> home Decoration
         </h1>
-        <p className="pt-5 text-[16px] font-[Poppins] font-[400] text-[#000000ba]">
+        <p className={`pt-5 text-[16px] font-[Poppins] font-[400] text-[#000000ba] ${poppins.className}`}>
           Lorem ipsum dolor sit amet consectetur, adipisicing elit. Beatae,
           assumenda? Quisquam itaque <br /> exercitationem labore vel, dolore
           quidem asperiores, laudantium temporibus soluta optio consequatur{" "}

@@ -1,12 +1,18 @@
 "use client";
-
 import useAuthStore from "@/store/authStore";
-import styles from "@/styles/styles";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { AiOutlineEye, AiOutlineEyeInvisible } from "react-icons/ai";
 import { toast } from "react-toastify";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Inter } from "next/font/google";
+const inter = Inter(
+  { 
+    subsets: ["latin"], 
+  }, 
+)
 
 const Login = () => {
   const router = useRouter();
@@ -33,9 +39,9 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-1 sm:px-6 lg:px-8">
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
-        <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
+        <h2 className={`${inter.className} text-center text-3xl font-bold text-gray-900`}>
           Login to your account
         </h2>
       </div>
@@ -43,14 +49,13 @@ const Login = () => {
         <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
           <form className="space-y-6" onSubmit={handleSubmit}>
             <div>
-              <label
+              <Label
                 htmlFor="email"
-                className="block text-sm font-medium text-gray-700"
-              >
+                className="block text-sm font-medium text-gray-700 mb-2">
                 Email address
-              </label>
+              </Label>
               <div className="mt-1">
-                <input
+                <Input
                   type="email"
                   name="email"
                   autoComplete="email"
@@ -62,14 +67,13 @@ const Login = () => {
               </div>
             </div>
             <div>
-              <label
+              <Label
                 htmlFor="password"
-                className="block text-sm font-medium text-gray-700"
-              >
+                className="block text-sm font-medium text-gray-700 mb-2">
                 Password
-              </label>
+              </Label>
               <div className="mt-1 relative">
-                <input
+                <Input
                   type={visible ? "text" : "password"}
                   name="password"
                   autoComplete="current-password"
@@ -93,20 +97,19 @@ const Login = () => {
                 )}
               </div>
             </div>
-            <div className={`${styles.normalFlex} justify-between`}>
-              <div className={`${styles.normalFlex}`}>
-                <input
+            <div className={`flex items-center gap-1 justify-between`}>
+              <div className={`flex items-center gap-3`}>
+                <Input
                   type="checkbox"
                   name="remember-me"
                   id="remember-me"
                   className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                 />
-                <label
+                <Label
                   htmlFor="remember-me"
-                  className="ml-2 block text-sm text-gray-900"
-                >
+                  className="block text-sm text-gray-900">
                   Remember me
-                </label>
+                </Label>
               </div>
               <div className="text-sm">
                 <Link
@@ -125,12 +128,11 @@ const Login = () => {
                   isLoading
                     ? "bg-blue-400 cursor-not-allowed"
                     : "bg-blue-600 hover:bg-blue-700"
-                }`}
-              >
+                }`}>
                 {isLoading ? "Logging in..." : "Login"}
               </button>
             </div>
-            <div className={`${styles.normalFlex} w-full`}>
+            <div className={`text-sm flex items-center gap-1 w-full`}>
               <h4>Don’t have an account?</h4>
               <Link href="/signup" className="text-blue-600 pl-2">
                 Sign Up

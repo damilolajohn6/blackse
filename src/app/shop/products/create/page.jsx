@@ -6,11 +6,11 @@ const ShopCreateProductPage = () => {
   return (
     <div>
       <div className="min-h-screen bg-gray-50">
-        <div className="flex w-full">
-          <div className="w-[80px] 800px:w-[330px]">
+        <div className="grid grid-cols-12 w-full">
+          <div className="lg:col-span-1 col-span-full bg-white">
             <ShopDashboardSideBar active={4} />
           </div>
-          <div className="flex-1 flex justify-center p-4">
+          <div className="lg:col-span-11 col-span-full p-4">
             <CreateProductForm />
           </div>
         </div>

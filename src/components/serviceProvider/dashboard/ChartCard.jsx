@@ -12,6 +12,13 @@ import {
   BarChart,
   Bar,
 } from "recharts";
+import { Jost } from "next/font/google";
+const jost = Jost(
+  {
+    subsets: ["latin"],
+    weight: ["100", "200", "300", "400", "500", "600", "700", "800"]
+  },
+)
 
 const ChartCard = ({ title, subtitle, type, data, dataKeys, colors }) => {
   const renderChart = () => {
@@ -89,7 +96,7 @@ const ChartCard = ({ title, subtitle, type, data, dataKeys, colors }) => {
     <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
       <div className="mb-4">
         <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
-        {subtitle && <p className="text-sm text-gray-600 mt-1">{subtitle}</p>}
+        {subtitle && <p className={`text-sm text-gray-600 mt-1 ${jost.className}`}>{subtitle}</p>}
       </div>
       {renderChart()}
     </div>

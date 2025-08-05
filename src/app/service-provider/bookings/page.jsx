@@ -19,6 +19,13 @@ import {
 import DashboardLayout from "@/components/serviceProvider/Layout/DashboardLayout";
 import useServiceProviderStore from "@/store/serviceStore";
 import { toast } from "react-toastify";
+import { Jost } from "next/font/google";
+const jost = Jost(
+  {
+    subsets: ["latin"],
+    weight: ["100", "200", "300", "400", "500", "600", "700", "800"]
+  },
+)
 
 const Bookings = () => {
   const {
@@ -123,7 +130,7 @@ const Bookings = () => {
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between">
             <div>
               <h1 className="text-2xl font-bold text-gray-900">Bookings</h1>
-              <p className="text-gray-600 mt-1">
+              <p className={`text-gray-600 mt-1 ${jost.className}`}>
                 Manage your service bookings and appointments
               </p>
             </div>

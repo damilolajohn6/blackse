@@ -4,6 +4,13 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Loader, Mail, ArrowLeft } from "lucide-react";
 import { toast } from "react-toastify";
+import { Jost } from "next/font/google";
+const jost = Jost(
+  {
+    subsets: ["latin"],
+    weight: ["100", "200", "300", "400", "500", "600", "700", "800"]
+  },
+)
 
 const ForgotPasswordPage = () => {
   const router = useRouter();
@@ -66,7 +73,7 @@ const ForgotPasswordPage = () => {
             <h2 className="mt-6 text-3xl font-bold text-gray-900">
               Forgot Password?
             </h2>
-            <p className="mt-2 text-sm text-gray-600">
+            <p className={`mt-2 text-sm text-gray-600 ${jost.className}`}>
               Enter your email address and we'll send you a reset code
             </p>
           </div>

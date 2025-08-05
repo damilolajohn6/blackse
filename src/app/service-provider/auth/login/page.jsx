@@ -5,6 +5,22 @@ import Link from "next/link";
 import { Eye, EyeOff, Loader, Mail, Lock } from "lucide-react";
 import { toast } from "react-toastify";
 import useServiceProviderStore from "@/store/serviceStore";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Poppins, Jost } from "next/font/google";
+const poppins = Poppins(
+  {
+    subsets: ["latin"],
+    weight: ["100", "200", "300", "400", "500", "600", "700", "800"]
+  },
+)
+const jost = Jost(
+  {
+    subsets: ["latin"],
+    weight: ["100", "200", "300", "400", "500", "600", "700", "800"]
+  },
+)
 
 const LoginPage = () => {
   const router = useRouter();
@@ -41,7 +57,6 @@ const LoginPage = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
     if (!formData.email || !formData.password) {
       toast.error("Please fill in all fields");
       return;
@@ -57,30 +72,32 @@ const LoginPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
-        <div className="bg-white rounded-2xl shadow-xl p-8">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-end lg:items-center justify-center">
+      <div className="lg:max-w-md w-full space-y-8">
+        <div className="bg-white lg:rounded-2xl shadow-xl p-7">
           {/* Header */}
           <div className="text-center">
-            <div className="mx-auto h-12 w-12 bg-indigo-600 rounded-full flex items-center justify-center">
-              <svg
-                className="h-6 w-6 text-white"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2-2v2m8 0V6a2 2 0 012 2v6a2 2 0 01-2 2H6a2 2 0 01-2-2V8a2 2 0 012-2V6"
-                />
-              </svg>
-            </div>
-            <h2 className="mt-6 text-3xl font-bold text-gray-900">
+            <Link href="/">
+              <div className="mx-auto h-12 w-12 bg-indigo-600 rounded-full flex items-center justify-center">
+                <svg
+                  className="h-6 w-6 text-white"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2-2v2m8 0V6a2 2 0 012 2v6a2 2 0 01-2 2H6a2 2 0 01-2-2V8a2 2 0 012-2V6"
+                  />
+                </svg>
+              </div>
+            </Link>
+            <h2 className="mt-4 text-2xl lg:text-3xl font-bold text-gray-900">
               Service Provider Login
             </h2>
-            <p className="mt-2 text-sm text-gray-600">
+            <p className={`mt-2 text-sm text-gray-600 ${jost.className}`}>
               Sign in to your service provider account
             </p>
           </div>
@@ -134,17 +151,17 @@ const LoginPage = () => {
             <div className="space-y-4">
               {/* Email Input */}
               <div>
-                <label
+                <Label
                   htmlFor="email"
                   className="block text-sm font-medium text-gray-700 mb-1"
                 >
                   Email Address
-                </label>
+                </Label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                     <Mail className="h-5 w-5 text-gray-400" />
                   </div>
-                  <input
+                  <Input
                     id="email"
                     name="email"
                     type="email"
@@ -152,7 +169,7 @@ const LoginPage = () => {
                     required
                     value={formData.email}
                     onChange={handleChange}
-                    className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
+                    className="block h-10 lg:h-12 w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
                     placeholder="Enter your email"
                   />
                 </div>
@@ -160,17 +177,17 @@ const LoginPage = () => {
 
               {/* Password Input */}
               <div>
-                <label
+                <Label
                   htmlFor="password"
                   className="block text-sm font-medium text-gray-700 mb-1"
                 >
                   Password
-                </label>
+                </Label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                     <Lock className="h-5 w-5 text-gray-400" />
                   </div>
-                  <input
+                  <Input
                     id="password"
                     name="password"
                     type={showPassword ? "text" : "password"}
@@ -178,7 +195,7 @@ const LoginPage = () => {
                     required
                     value={formData.password}
                     onChange={handleChange}
-                    className="block w-full pl-10 pr-10 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
+                    className=" block h-10 lg:h-12 w-full pl-10 pr-10 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
                     placeholder="Enter your password"
                   />
                   <button
@@ -223,21 +240,21 @@ const LoginPage = () => {
             </div>
 
             {/* Submit Button */}
-            <button
+            <Button
               type="submit"
               disabled={isLoading}
-              className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-lg text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="group h-12 relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-lg text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               {isLoading ? (
                 <Loader className="h-5 w-5 animate-spin" />
               ) : (
                 "Sign In"
               )}
-            </button>
+            </Button>
 
             {/* Register Link */}
             <div className="text-center">
-              <p className="text-sm text-gray-600">
+              <p className={`text-sm text-gray-600 ${jost.className}`}>
                 Don't have an account?{" "}
                 <Link
                   href="/service-provider/auth/register"

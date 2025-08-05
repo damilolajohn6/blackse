@@ -102,9 +102,8 @@ export const SocketProvider = ({ children }) => {
           id: Date.now(),
           type: "message",
           title: "New Message",
-          message: `You have a new message from ${
-            message.senderId.username || "User"
-          }`,
+          message: `You have a new message from ${message.senderId.username || "User"
+            }`,
           timestamp: new Date(),
           read: false,
         });

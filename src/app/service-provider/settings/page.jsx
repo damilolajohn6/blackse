@@ -109,10 +109,10 @@ const SettingsPage = () => {
       toast.error("Failed to update security settings");
     }
   };
-
+  
   return (
     <DashboardLayout>
-      <div className="space-y-6 p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto">
+      <div className="space-y-6 max-w-7xl mx-auto">
         {/* Header */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
           <h1 className="text-2xl font-bold text-gray-900">Settings</h1>

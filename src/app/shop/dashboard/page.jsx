@@ -10,12 +10,14 @@ export default function ShopDashboard() {
   return (
     <>
       <div className="">
-        <div className="flex items-start justify-between w-full">
-          <div className="w-[80px] 800px:w-[330px]">
+        <div className="grid grid-cols-12 w-full">
+          <div className="lg:col-span-1 col-span-full bg-white">
             <ShopDashboardSideBar active={1} />
           </div>
 
-          <ShopDashboardHero />
+          <div className="lg:col-span-11 col-span-full p-4">
+            <ShopDashboardHero />
+          </div>
         </div>
       </div>
     </>

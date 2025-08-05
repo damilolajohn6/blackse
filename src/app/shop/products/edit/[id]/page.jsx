@@ -1,4 +1,5 @@
-import EditProduct from "@/components/shop/EditProducts";
+import CreateProductForm from "@/components/shop/CreateProductForm";
+// import EditProduct from "@/components/shop/EditProducts";
 import ShopDashboardSideBar from "@/components/shop/ShopDashboardSidebar";
 
 export default function EditProductPage() {
@@ -10,7 +11,8 @@ export default function EditProductPage() {
             <ShopDashboardSideBar active={3} />
           </div>
           <div className="flex-1 flex justify-center p-4">
-           <EditProduct />
+           {/* <EditProduct /> */}
+           <CreateProductForm />
           </div>
         </div>
       </div>

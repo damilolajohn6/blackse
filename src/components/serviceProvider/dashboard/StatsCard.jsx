@@ -1,4 +1,11 @@
 import { TrendingUp, TrendingDown } from "lucide-react";
+import { Jost } from "next/font/google";
+const jost = Jost(
+  {
+    subsets: ["latin"],
+    weight: ["100", "200", "300", "400", "500", "600", "700", "800"]
+  },
+)
 
 const StatsCard = ({ title, value, icon: Icon, color, trend }) => {
   const colorClasses = {
@@ -15,7 +22,12 @@ const StatsCard = ({ title, value, icon: Icon, color, trend }) => {
       <div className="flex items-center justify-between">
         <div className="flex-1">
           <p className="text-sm font-medium text-gray-600">{title}</p>
-          <p className="text-2xl font-bold text-gray-900 mt-1">{value}</p>
+          <div className="flex items-center justify-between">
+            <p className="text-2xl font-bold text-gray-900 py-3">{value}</p>
+            <div className={`p-3 rounded-lg ${colorClasses[color]}`}>
+              <Icon className="h-6 w-6" />
+            </div>
+          </div>
           {trend && (
             <div className="flex items-center mt-2">
               {trend.direction === "up" ? (
@@ -30,12 +42,9 @@ const StatsCard = ({ title, value, icon: Icon, color, trend }) => {
               >
                 {trend.value}%
               </span>
-              <span className="text-sm text-gray-500 ml-1">{trend.label}</span>
+              <span className={`text-sm text-gray-500 ml-1 ${jost.className}`}>{trend.label}</span>
             </div>
           )}
-        </div>
-        <div className={`p-3 rounded-lg ${colorClasses[color]}`}>
-          <Icon className="h-6 w-6" />
         </div>
       </div>
     </div>

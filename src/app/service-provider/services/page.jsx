@@ -25,6 +25,14 @@ import DeleteConfirmModal from "@/components/serviceProvider/common/DeleteConfir
 import useServiceProviderStore from "@/store/serviceStore";
 import { toast } from "react-toastify";
 
+import { Poppins } from "next/font/google";
+const poppins = Poppins(
+  {
+    subsets: ["latin"],
+    weight: ["100", "200", "300", "400", "500", "600", "700", "800"]
+  },
+)
+
 const ServicesPage = () => {
   const router = useRouter();
   const {
@@ -291,10 +299,10 @@ const ServicesPage = () => {
               </p>
               <Link
                 href="/service-provider/services/new"
-                className="btn btn-primary"
+                className="btn btn-primary flex flex-col items-center gap-2"
               >
-                <Plus className="h-4 w-4 mr-2" />
-                Add Service
+                <Plus className="size-8" />
+                <p className={`${poppins.className}`}>Add Service</p>
               </Link>
             </div>
           ) : (

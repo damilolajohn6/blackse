@@ -1,5 +1,3 @@
-"use client";
-
 import React from "react";
 import Link from "next/link";
 import { AiOutlineFolderAdd, AiOutlineGift } from "react-icons/ai";
@@ -10,11 +8,17 @@ import { VscNewFile } from "react-icons/vsc";
 import { CiMoneyBill, CiSettings } from "react-icons/ci";
 import { BiMessageSquareDetail } from "react-icons/bi";
 import { HiOutlineReceiptRefund } from "react-icons/hi";
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  CarouselNext,
+  CarouselPrevious,
+} from "@/components/ui/carousel"
 
 const ShopDashboardSideBar = ({ active }) => {
   return (
-    <div className="w-full h-[90vh] bg-white shadow-sm overflow-y-scroll sticky top-0 left-0 z-10">
-      {/* Dashboard Item */}
+    <div className="w-full overflow-x-scroll lg:overflow-x-hidden bg-white shadow-sm sticky top-18 bottom-0 lg:min-h-screen left-0 z-10 flex lg:flex-col items-center justify-center">
       <SidebarItem
         href="/shop/dashboard"
         icon={<RxDashboard size={30} />}
@@ -88,7 +92,7 @@ const ShopDashboardSideBar = ({ active }) => {
 const SidebarItem = ({ href, icon, label, active }) => {
   return (
     <div className="w-full flex items-center p-4">
-      <Link href={href} className="w-full flex items-center">
+      <Link href={href} className="w-full flex items-center justify-center">
         {React.cloneElement(icon, {
           color: active ? "crimson" : "#555",
         })}

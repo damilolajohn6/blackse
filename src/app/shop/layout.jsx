@@ -1,6 +1,4 @@
 "use client";
-
-import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import ShopAuthProvider from "@/components/Providers/ShopAuthProvider";
 import useShopStore from "@/store/shopStore";
@@ -19,8 +17,8 @@ export default function ShopLayout({ children }) {
     <ShopAuthProvider>
       <div className="min-h-screen bg-gray-100">
         {/* Shop Header */}
-        <header className="bg-white shadow-sm">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
+        <header className="bg-white fixed top-0 left-0 w-full z-20">
+          <div className="max-w-7xl mx-auto py-4 flex justify-between items-center">
             {/* Logo & Shop Name */}
             <Link
               href={isSeller ? "/shop" : "/"}
@@ -40,7 +38,7 @@ export default function ShopLayout({ children }) {
 
             {/* Navigation */}
             {isSeller && (
-              <nav className="flex items-center space-x-6">
+              <nav className="hidden lg:flex items-center space-x-6">
                 <Link
                   href="/shop/dashboard"
                   className="flex items-center space-x-1 text-gray-600 hover:text-blue-600"
@@ -75,13 +73,13 @@ export default function ShopLayout({ children }) {
         </header>
 
         {/* Content */}
-        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <main className="min-h-screen pt-18">
           {children}
         </main>
 
         <footer className="bg-blue-600 text-white mt-auto">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 text-center">
-            <p>
+            <p suppressHydrationWarning={true}>
               © {new Date().getFullYear()} BlackandSell. All rights reserved.
             </p>
           </div>

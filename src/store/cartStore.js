@@ -7,7 +7,6 @@ const useCartStore = create(
   persist(
     (set, get) => ({
       cart: [],
-
       // Add to cart
       addToCart: (data) => {
         const currentCart = get().cart;

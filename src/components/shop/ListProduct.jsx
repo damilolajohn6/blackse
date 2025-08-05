@@ -8,6 +8,17 @@ import { toast } from "react-toastify";
 import useShopStore from "@/store/shopStore";
 import useProductStore from "@/store/productStore";
 import { FaPlus, FaEdit, FaTrash, FaEye, FaBolt } from "react-icons/fa";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectLabel,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 
 const ListProducts = () => {
   const router = useRouter();
@@ -169,9 +180,9 @@ const ListProducts = () => {
   const displayedProducts = selectedCategory ? categoryProducts : shopProducts;
 
   return (
-    <div className="py-6 px-4 sm:px-6 lg:px-8">
-      <div className="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4">
-        <h1 className="text-2xl font-bold text-gray-900 text-center sm:text-left">
+    <div className="">
+      <div className="flex flex-col sm:flex-row justify-between items-center py-4 gap-4">
+        <h1 className="text-2xl font-normal text-gray-900 text-center sm:text-left">
           {isSeller ? "Your Products" : "Browse Products"}
         </h1>
         <div className="flex flex-col sm:flex-row gap-4">
@@ -181,27 +192,36 @@ const ListProducts = () => {
               className="flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors text-sm sm:text-base"
             >
               <FaPlus className="h-5 w-5" />
-              <span>Create Product</span>
+              <span className="whitespace-nowrap">Create Product</span>
             </Link>
           )}
-          <select
+          <Select
             value={selectedCategory}
             onChange={handleCategoryChange}
-            className="rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm"
-          >
-            <option value="">All Categories</option>
-            {categories.primary?.map((category) => (
-              <option key={category} value={category}>
-                {category.charAt(0).toUpperCase() + category.slice(1)}
-              </option>
-            ))}
-            {categories.cultural?.map((category) => (
-              <option key={category} value={category}>
-                {category.charAt(0).toUpperCase() + category.slice(1)}{" "}
-                (Cultural)
-              </option>
-            ))}
-          </select>
+            className="rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm">
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="All Categories" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectGroup>
+                <SelectLabel>Primary</SelectLabel>
+                {categories.primary?.map((category) => (
+                  <SelectItem key={category} value={category}>
+                    {category.charAt(0).toUpperCase() + category.slice(1)}
+                  </SelectItem>
+                ))}
+              </SelectGroup>
+              <SelectGroup>
+                <SelectLabel>Cultural</SelectLabel>
+                {categories.cultural?.map((category) => (
+                  <SelectItem key={category} value={category}>
+                    {category.charAt(0).toUpperCase() + category.slice(1)}{" "}
+                    (Cultural)
+                  </SelectItem>
+                ))}
+              </SelectGroup>
+            </SelectContent>
+          </Select>
         </div>
       </div>
 
@@ -215,10 +235,10 @@ const ListProducts = () => {
             className="grid grid-cols-1 sm:grid-cols-3 gap-4"
           >
             <div>
-              <label className="block text-sm font-medium text-gray-700">
+              <Label className="block text-sm font-medium text-gray-700">
                 Product
-              </label>
-              <select
+              </Label>
+              <Select
                 value={flashSaleForm.productId}
                 onChange={(e) =>
                   setFlashSaleForm({
@@ -228,19 +248,23 @@ const ListProducts = () => {
                 }
                 className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
               >
-                <option value="">Select Product</option>
-                {shopProducts.map((product) => (
-                  <option key={product._id} value={product._id}>
-                    {product.name}
-                  </option>
-                ))}
-              </select>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select Product" />
+                </SelectTrigger>
+                <SelectContent>
+                  {shopProducts.map((product) => (
+                    <SelectItem key={product._id} value={product._id}>
+                      {product.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700">
+              <Label className="block text-sm font-medium text-gray-700">
                 Discount Price ($)
-              </label>
-              <input
+              </Label>
+              <Input
                 type="number"
                 value={flashSaleForm.discountPrice}
                 onChange={(e) =>
@@ -255,10 +279,10 @@ const ListProducts = () => {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700">
+              <Label className="block text-sm font-medium text-gray-700">
                 Stock Limit
-              </label>
-              <input
+              </Label>
+              <Input
                 type="number"
                 value={flashSaleForm.stockLimit}
                 onChange={(e) =>
@@ -272,10 +296,10 @@ const ListProducts = () => {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700">
+              <Label className="block text-sm font-medium text-gray-700">
                 Start Date
-              </label>
-              <input
+              </Label>
+              <Input
                 type="datetime-local"
                 value={flashSaleForm.startDate}
                 onChange={(e) =>
@@ -288,10 +312,10 @@ const ListProducts = () => {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700">
+              <Label className="block text-sm font-medium text-gray-700">
                 End Date
-              </label>
-              <input
+              </Label>
+              <Input
                 type="datetime-local"
                 value={flashSaleForm.endDate}
                 onChange={(e) =>

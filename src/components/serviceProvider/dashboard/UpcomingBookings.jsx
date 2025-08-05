@@ -56,10 +56,10 @@ const UpcomingBookings = () => {
             <div className="flex items-start justify-between">
               <div className="flex-1">
                 <h4 className="font-medium text-gray-900">{booking.service}</h4>
-                <div className="flex items-center space-x-4 mt-2 text-sm text-gray-600">
+                <div className="flex items-center space-x-4 my-2 text-sm text-gray-600">
                   <div className="flex items-center">
                     <User className="h-4 w-4 mr-1" />
-                    {booking.client}
+                    <p className="whitespace-nowrap">{booking.client}</p>
                   </div>
                   <div className="flex items-center">
                     <Calendar className="h-4 w-4 mr-1" />
@@ -67,12 +67,12 @@ const UpcomingBookings = () => {
                   </div>
                   <div className="flex items-center">
                     <Clock className="h-4 w-4 mr-1" />
-                    {booking.time}
+                    <p className="whitespace-nowrap">{booking.time}</p>
                   </div>
                 </div>
                 <div className="flex items-center mt-2 text-sm text-gray-600">
                   <MapPin className="h-4 w-4 mr-1" />
-                  {booking.location}
+                  <p className="whitespace-nowrap">{booking.location}</p>
                 </div>
               </div>
               <span

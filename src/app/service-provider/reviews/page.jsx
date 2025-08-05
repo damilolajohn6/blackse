@@ -10,6 +10,13 @@ import {
 } from "lucide-react";
 import DashboardLayout from "@/components/serviceProvider/Layout/DashboardLayout";
 import useServiceProviderStore from "@/store/serviceStore";
+import { Jost } from "next/font/google";
+const jost = Jost(
+  {
+    subsets: ["latin"],
+    weight: ["100", "200", "300", "400", "500", "600", "700", "800"]
+  },
+)
 
 const ReviewsPage = () => {
   const { reviews, reviewStats, serviceProvider, fetchReviews, isLoading } =
@@ -79,7 +86,7 @@ const ReviewsPage = () => {
               <h1 className="text-2xl font-bold text-gray-900">
                 Reviews & Ratings
               </h1>
-              <p className="text-gray-600 mt-1">
+              <p className={`text-gray-600 mt-1 ${jost.className}`}>
                 See what your customers are saying about your services
               </p>
             </div>

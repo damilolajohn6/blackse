@@ -1,4 +1,4 @@
-"use client"
+"use client";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -19,6 +19,21 @@ import ChartCard from "@/components/serviceProvider/dashboard/ChartCard";
 import RecentActivity from "@/components/serviceProvider/dashboard/RecentActivity";
 import UpcomingBookings from "@/components/serviceProvider/dashboard/UpcomingBookings";
 import useServiceProviderStore from "@/store/serviceStore";
+import { Poppins, Jost } from "next/font/google";
+
+const poppins = Poppins(
+  {
+    subsets: ["latin"],
+    weight: ["100", "200", "300", "400", "500", "600", "700", "800"]
+  },
+);
+
+const jost = Jost(
+  {
+    subsets: ["latin"],
+    weight: ["100", "200", "300", "400", "500", "600", "700", "800"]
+  },
+);
 
 const DashboardPage = () => {
   const router = useRouter();
@@ -47,8 +62,8 @@ const DashboardPage = () => {
     const loadDashboardData = async () => {
       try {
         await Promise.all([
-          fetchDashboardStats(dateRange.startDate, dateRange.endDate),
-          fetchBookings({ limit: 5, status: "all" }),
+          // fetchDashboardStats(dateRange.startDate, dateRange.endDate),
+          // fetchBookings({ limit: 5, status: "all" }),
           fetchReviews(1, 5),
         ]);
       } catch (error) {
@@ -94,18 +109,18 @@ const DashboardPage = () => {
     responseRate:
       bookings.length > 0
         ? (
-            (bookings.filter((b) => b.status !== "Pending").length /
-              bookings.length) *
-            100
-          ).toFixed(1)
+          (bookings.filter((b) => b.status !== "Pending").length /
+            bookings.length) *
+          100
+        ).toFixed(1)
         : 0,
     completionRate:
       bookings.length > 0
         ? (
-            (bookings.filter((b) => b.status === "Completed").length /
-              bookings.length) *
-            100
-          ).toFixed(1)
+          (bookings.filter((b) => b.status === "Completed").length /
+            bookings.length) *
+          100
+        ).toFixed(1)
         : 0,
     averageRating: serviceProvider?.ratings || 0,
     totalReviews: serviceProvider?.numOfReviews || 0,
@@ -159,11 +174,11 @@ const DashboardPage = () => {
               <h1 className="text-2xl font-bold text-gray-900">
                 Welcome back, {serviceProvider?.fullname?.firstName}! 👋
               </h1>
-              <p className="text-gray-600 mt-1">
+              <p className={`text-gray-600 mt-1 ${jost.className}`}>
                 Here's what's happening with your services today.
               </p>
             </div>
-            <div className="flex items-center space-x-4 mt-4 lg:mt-0">
+            <div className="flex items-center flex-wrap gap-5 lg:gap-0 lg:flex-nowrap space-x-4 mt-4 lg:mt-0">
               {/* Date Range Selector */}
               <div className="flex items-center space-x-2">
                 <input
@@ -189,19 +204,17 @@ const DashboardPage = () => {
               <button
                 onClick={handleRefresh}
                 disabled={isRefreshing}
-                className="btn btn-outline btn-sm"
-              >
+                className="btn btn-outline btn-sm flex items-center">
                 <RefreshCw
-                  className={`h-4 w-4 mr-2 ${
-                    isRefreshing ? "animate-spin" : ""
-                  }`}
+                  className={`h-4 w-4 mr-2 ${isRefreshing ? "animate-spin" : ""
+                    }`}
                 />
-                Refresh
+                <p>Refresh</p>
               </button>
 
-              <button className="btn btn-primary btn-sm">
+              <button className="btn btn-primary btn-sm flex items-center">
                 <Download className="h-4 w-4 mr-2" />
-                Export
+                <p>Export</p>
               </button>
             </div>
           </div>
@@ -297,7 +310,7 @@ const DashboardPage = () => {
                     <h3 className="text-sm font-medium text-gray-900">
                       Add Service
                     </h3>
-                    <p className="text-xs text-gray-500">
+                    <p className={`text-xs text-gray-500 ${jost.className}`}>
                       Create new service offering
                     </p>
                   </div>
@@ -317,7 +330,7 @@ const DashboardPage = () => {
                     <h3 className="text-sm font-medium text-gray-900">
                       View Bookings
                     </h3>
-                    <p className="text-xs text-gray-500">
+                    <p className={`text-xs text-gray-500 ${jost.className}`}>
                       Manage your bookings
                     </p>
                   </div>
@@ -337,7 +350,7 @@ const DashboardPage = () => {
                     <h3 className="text-sm font-medium text-gray-900">
                       Messages
                     </h3>
-                    <p className="text-xs text-gray-500">Chat with customers</p>
+                    <p className={`text-xs text-gray-500 ${jost.className}`}>Chat with customers</p>
                   </div>
                 </div>
               </div>
@@ -355,7 +368,7 @@ const DashboardPage = () => {
                     <h3 className="text-sm font-medium text-gray-900">
                       Profile
                     </h3>
-                    <p className="text-xs text-gray-500">Update your profile</p>
+                    <p className={`text-xs text-gray-500 ${jost.className}`}>Update your profile</p>
                   </div>
                 </div>
               </div>

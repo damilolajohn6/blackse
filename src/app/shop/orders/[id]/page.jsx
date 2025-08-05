@@ -19,7 +19,7 @@ const OrderDetailsPage = () => {
     }, [seller, router]);
 
     if (!seller) {
-      return <div>Loading...</div>;
+      return <div>Haaaaaaa</div>;
     }
 
   return (

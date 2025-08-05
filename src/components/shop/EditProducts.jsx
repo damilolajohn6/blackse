@@ -8,7 +8,6 @@ import useProductStore from "@/store/productStore";
 import { FaSpinner, FaArrowLeft, FaTrash } from "react-icons/fa";
 import Link from "next/link";
 
-
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_SERVER || "http://localhost:8000/api/v2";
 
@@ -42,9 +41,11 @@ export default function EditProduct() {
     isMadeInCanada: false,
     canadianCertification: "",
     images: [],
+    videos: [],
     shipping: { isFreeShipping: false, cost: 0 },
   });
   const [newImages, setNewImages] = useState([]);
+  const [newVideos, setNewVideos] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
@@ -92,6 +93,7 @@ export default function EditProduct() {
         isMadeInCanada: product.isMadeInCanada || false,
         canadianCertification: product.canadianCertification || "",
         images: product.images || [],
+        videos: product.videos || [],
         shipping: {
           isFreeShipping: product.shipping?.isFreeShipping || false,
           cost: product.shipping?.cost || 0,
@@ -127,14 +129,107 @@ export default function EditProduct() {
     setFormData((prev) => ({ ...prev, tags }));
   };
 
-  const handleImageUpload = (e) => {
+  const handleImageUpload = async (e) => {
     const files = Array.from(e.target.files);
-    const newImageUrls = files.map((file) => ({
-      public_id: `temp_${Date.now()}_${Math.random()}`, // Temporary ID
-      url: URL.createObjectURL(file),
-      file, // Store file for upload
-    }));
-    setNewImages((prev) => [...prev, ...newImageUrls]);
+    if (formData.images.length + newImages.length + files.length > 5) {
+      toast.error("Maximum 5 images allowed", { toastId: "image-limit" });
+      return;
+    }
+
+    setIsSubmitting(true);
+    const newImageUrls = [];
+
+    try {
+      for (const file of files) {
+        const formDataToUpload = new FormData();
+        formDataToUpload.append("file", file);
+        formDataToUpload.append("upload_preset", "gdmugccy");
+        formDataToUpload.append(
+          "cloud_name",
+          process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME
+        );
+
+        const res = await fetch(
+          `https://api.cloudinary.com/v1_1/${process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME}/image/upload`,
+          {
+            method: "POST",
+            body: formDataToUpload,
+          }
+        );
+        const data = await res.json();
+        if (!data.secure_url) {
+          throw new Error("Image upload failed");
+        }
+        newImageUrls.push({ url: data.secure_url, public_id: data.public_id });
+      }
+
+      setNewImages((prev) => [...prev, ...newImageUrls]);
+      toast.success("Images uploaded successfully");
+    } catch (error) {
+      console.error("Image upload error:", {
+        message: error.message,
+        status: error.response?.status,
+        data: error.response?.data,
+      });
+      toast.error(error.message || "Failed to upload images", {
+        toastId: "image-upload-error",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleVideoUpload = async (e) => {
+    const files = Array.from(e.target.files);
+    if (formData.videos.length + newVideos.length + files.length > 3) {
+      toast.error("Maximum 3 videos allowed", { toastId: "video-limit" });
+      return;
+    }
+
+    setIsSubmitting(true);
+    const newVideoUrls = [];
+
+    try {
+      for (const file of files) {
+        if (file.size > 100 * 1024 * 1024) {
+          throw new Error("Video file size exceeds 100MB");
+        }
+        const formDataToUpload = new FormData();
+        formDataToUpload.append("file", file);
+        formDataToUpload.append("upload_preset", "gdmugccy");
+        formDataToUpload.append(
+          "cloud_name",
+          process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME
+        );
+
+        const res = await fetch(
+          `https://api.cloudinary.com/v1_1/${process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME}/video/upload`,
+          {
+            method: "POST",
+            body: formDataToUpload,
+          }
+        );
+        const data = await res.json();
+        if (!data.secure_url) {
+          throw new Error("Video upload failed");
+        }
+        newVideoUrls.push({ url: data.secure_url, public_id: data.public_id });
+      }
+
+      setNewVideos((prev) => [...prev, ...newVideoUrls]);
+      toast.success("Videos uploaded successfully");
+    } catch (error) {
+      console.error("Video upload error:", {
+        message: error.message,
+        status: error.response?.status,
+        data: error.response?.data,
+      });
+      toast.error(error.message || "Failed to upload videos", {
+        toastId: "video-upload-error",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleRemoveImage = async (image, isNew = false) => {
@@ -142,6 +237,7 @@ export default function EditProduct() {
       setNewImages((prev) =>
         prev.filter((img) => img.public_id !== image.public_id)
       );
+      toast.success("Image removed from new uploads");
     } else {
       try {
         const response = await fetch(`${API_BASE_URL}/product/delete-image`, {
@@ -164,8 +260,54 @@ export default function EditProduct() {
         }));
         toast.success("Image deleted successfully");
       } catch (error) {
-        console.error("Delete image error:", error);
-        toast.error(error.message || "Failed to delete image");
+        console.error("Delete image error:", {
+          message: error.message,
+          status: error.response?.status,
+          data: error.response?.data,
+        });
+        toast.error(error.message || "Failed to delete image", {
+          toastId: "image-delete-error",
+        });
+      }
+    }
+  };
+
+  const handleRemoveVideo = async (video, isNew = false) => {
+    if (isNew) {
+      setNewVideos((prev) =>
+        prev.filter((vid) => vid.public_id !== video.public_id)
+      );
+      toast.success("Video removed from new uploads");
+    } else {
+      try {
+        const response = await fetch(`${API_BASE_URL}/product/delete-video`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${sellerToken}`,
+          },
+          credentials: "include",
+          body: JSON.stringify({ public_id: video.public_id }),
+        });
+        const data = await response.json();
+        if (!response.ok)
+          throw new Error(data.message || "Failed to delete video");
+        setFormData((prev) => ({
+          ...prev,
+          videos: prev.videos.filter(
+            (vid) => vid.public_id !== video.public_id
+          ),
+        }));
+        toast.success("Video deleted successfully");
+      } catch (error) {
+        console.error("Delete video error:", {
+          message: error.message,
+          status: error.response?.status,
+          data: error.response?.data,
+        });
+        toast.error(error.message || "Failed to delete video", {
+          toastId: "video-delete-error",
+        });
       }
     }
   };
@@ -174,7 +316,7 @@ export default function EditProduct() {
     e.preventDefault();
     setIsSubmitting(true);
 
-    // Basic validation
+    // Validation
     if (
       !formData.name ||
       formData.name.length < 5 ||
@@ -219,20 +361,24 @@ export default function EditProduct() {
     }
 
     try {
-      // Simulate image upload (replace with Cloudinary upload logic)
-      const uploadedImages = await Promise.all(
-        newImages.map(async (img) => {
-          // Placeholder: Replace with actual Cloudinary upload
-          return {
+      const uploadedImages = newImages.length
+        ? newImages.map((img) => ({
             public_id: img.public_id,
-            url: img.url, // In reality, this would be the Cloudinary URL
-          };
-        })
-      );
+            url: img.url,
+          }))
+        : [];
+
+      const uploadedVideos = newVideos.length
+        ? newVideos.map((vid) => ({
+            public_id: vid.public_id,
+            url: vid.url,
+          }))
+        : [];
 
       const updatedFormData = {
         ...formData,
         images: [...formData.images, ...uploadedImages],
+        videos: [...formData.videos, ...uploadedVideos],
         price: Number(formData.price),
         priceDiscount: formData.priceDiscount
           ? Number(formData.priceDiscount)
@@ -273,7 +419,7 @@ export default function EditProduct() {
         <h1 className="text-2xl font-bold text-gray-900">Edit Product</h1>
         <Link
           href="/shop/products"
-          className="flex items-center space-x-2 text-blue-600 hover:text-blue-800"
+          className="flex items-center space-x-2 text-blue-600 hover:text-blue-800 transition-colors duration-200"
         >
           <FaArrowLeft className="h-5 w-5" />
           <span>Back to Products</span>
@@ -290,7 +436,7 @@ export default function EditProduct() {
           <p className="text-red-600">{error}</p>
           <button
             onClick={() => fetchSingleProduct(id, sellerToken)}
-            className="mt-4 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
+            className="mt-4 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 transition-colors duration-200"
           >
             Retry
           </button>
@@ -466,44 +612,146 @@ export default function EditProduct() {
               htmlFor="images"
               className="block text-sm font-medium text-gray-700"
             >
-              Images
+              Images (Max 5)
             </label>
-            <input
-              type="file"
-              id="images"
-              multiple
-              accept="image/*"
-              onChange={handleImageUpload}
-              className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-            />
+            <div className="relative border-2 border-dashed border-gray-300 rounded-lg p-6 hover:border-blue-500 transition-all duration-200">
+              <input
+                type="file"
+                id="images"
+                multiple
+                accept="image/*"
+                onChange={handleImageUpload}
+                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                disabled={isSubmitting}
+              />
+              <div className="text-center">
+                <svg
+                  className="mx-auto h-12 w-12 text-gray-400"
+                  stroke="currentColor"
+                  fill="none"
+                  viewBox="0 0 48 48"
+                  aria-hidden="true"
+                >
+                  <path
+                    d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+                <p className="mt-1 text-sm text-gray-600">
+                  Drag and drop images here, or click to select files
+                </p>
+              </div>
+            </div>
+            {isSubmitting && (
+              <p className="text-center text-gray-600 mt-2">Uploading...</p>
+            )}
             <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 gap-4">
               {formData.images.map((image) => (
-                <div key={image.public_id} className="relative">
+                <div key={image.public_id} className="relative group">
                   <img
                     src={image.url}
                     alt="Product"
-                    className="h-24 w-full object-cover rounded-md"
+                    className="h-24 w-full object-cover rounded-md shadow-md"
                   />
                   <button
                     type="button"
                     onClick={() => handleRemoveImage(image, false)}
-                    className="absolute top-1 right-1 bg-red-600 text-white p-1 rounded-full"
+                    className="absolute top-1 right-1 bg-red-600 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-200"
                   >
                     <FaTrash className="h-4 w-4" />
                   </button>
                 </div>
               ))}
               {newImages.map((image) => (
-                <div key={image.public_id} className="relative">
+                <div key={image.public_id} className="relative group">
                   <img
                     src={image.url}
                     alt="New Product"
-                    className="h-24 w-full object-cover rounded-md"
+                    className="h-24 w-full object-cover rounded-md shadow-md"
                   />
                   <button
                     type="button"
                     onClick={() => handleRemoveImage(image, true)}
-                    className="absolute top-1 right-1 bg-red-600 text-white p-1 rounded-full"
+                    className="absolute top-1 right-1 bg-red-600 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+                  >
+                    <FaTrash className="h-4 w-4" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Videos */}
+          <div>
+            <label
+              htmlFor="videos"
+              className="block text-sm font-medium text-gray-700"
+            >
+              Videos (Max 3, 100MB each)
+            </label>
+            <div className="relative border-2 border-dashed border-gray-300 rounded-lg p-6 hover:border-blue-500 transition-all duration-200">
+              <input
+                type="file"
+                id="videos"
+                multiple
+                accept="video/*"
+                onChange={handleVideoUpload}
+                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                disabled={isSubmitting}
+              />
+              <div className="text-center">
+                <svg
+                  className="mx-auto h-12 w-12 text-gray-400"
+                  stroke="currentColor"
+                  fill="none"
+                  viewBox="0 0 48 48"
+                  aria-hidden="true"
+                >
+                  <path
+                    d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+                <p className="mt-1 text-sm text-gray-600">
+                  Drag and drop videos here, or click to select files
+                </p>
+              </div>
+            </div>
+            {isSubmitting && (
+              <p className="text-center text-gray-600 mt-2">Uploading...</p>
+            )}
+            <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 gap-4">
+              {formData.videos.map((video) => (
+                <div key={video.public_id} className="relative group">
+                  <video
+                    src={video.url}
+                    className="h-24 w-full object-cover rounded-md shadow-md"
+                    muted
+                  />
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveVideo(video, false)}
+                    className="absolute top-1 right-1 bg-red-600 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+                  >
+                    <FaTrash className="h-4 w-4" />
+                  </button>
+                </div>
+              ))}
+              {newVideos.map((video) => (
+                <div key={video.public_id} className="relative group">
+                  <video
+                    src={video.url}
+                    className="h-24 w-full object-cover rounded-md shadow-md"
+                    muted
+                  />
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveVideo(video, true)}
+                    className="absolute top-1 right-1 bg-red-600 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-200"
                   >
                     <FaTrash className="h-4 w-4" />
                   </button>

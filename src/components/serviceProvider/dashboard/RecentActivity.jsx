@@ -1,4 +1,12 @@
 import { Clock, CheckCircle, XCircle, MessageSquare, Star } from "lucide-react";
+import { Jost } from "next/font/google";
+
+const jost = Jost(
+  {
+    subsets: ["latin"],
+    weight: ["100", "200", "300", "400", "500", "600", "700", "800"]
+  },
+)
 
 const RecentActivity = () => {
   const activities = [
@@ -67,7 +75,7 @@ const RecentActivity = () => {
                   {activity.title}
                 </p>
                 <p className="text-sm text-gray-600">{activity.description}</p>
-                <p className="text-xs text-gray-500 mt-1">{activity.time}</p>
+                <p className={`text-xs text-gray-500 mt-1 ${jost.className}`}>{activity.time}</p>
               </div>
             </div>
           );

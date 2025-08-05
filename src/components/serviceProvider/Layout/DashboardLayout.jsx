@@ -1,7 +1,7 @@
 "use client";
-
 import { useState, useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
+// import { motion } from "framer-motion";
 import Link from "next/link";
 import {
   Menu,
@@ -21,6 +21,13 @@ import {
 } from "lucide-react";
 import useServiceProviderStore from "@/store/serviceStore";
 import { toast } from "react-toastify";
+import { Poppins } from "next/font/google";
+const poppins = Poppins(
+  {
+    subsets: ["latin"],
+    weight: ["100", "200", "300", "400", "500", "600", "700", "800"]
+  },
+)
 
 const DashboardLayout = ({ children }) => {
   const router = useRouter();
@@ -83,7 +90,7 @@ const DashboardLayout = ({ children }) => {
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       {/* Top Bar */}
-      <div className="bg-white shadow-sm border-b border-gray-200 h-16 flex items-center justify-between px-4 sm:px-6 lg:px-8 sticky top-0 z-40">
+      <div className="bg-white z-[70] shadow-sm border-b border-gray-200 h-16 flex items-center justify-between px-4 sm:px-6 lg:px-8 sticky top-0">
         <div className="flex items-center space-x-4">
           <button
             onClick={toggleSidebar}
@@ -209,14 +216,12 @@ const DashboardLayout = ({ children }) => {
           </div>
         </div>
       </div>
-
       <div className="flex flex-1">
         {/* Sidebar */}
         <div
-          className={`fixed inset-y-0 left-0 z-50 w-64 bg-white shadow-lg transform transition-transform duration-300 ease-in-out ${
-            sidebarOpen ? "translate-x-0" : "-translate-x-full"
-          } lg:translate-x-0 lg:static lg:flex lg:flex-col lg:w-64 lg:shrink-0`}
-        >
+          className={`fixed left-0 top-0 bottom-0 z-[60] w-64 bg-white shadow-lg transform transition-transform duration-300 ease-in-out ${sidebarOpen ? "translate-x-0" : "-translate-x-full"
+            } lg:translate-x-0 lg:static lg:flex lg:flex-col lg:justify-between lg:w-64 lg:shrink-0`}>
+          {/* Sidebar Header */}
           <div className="flex items-center justify-between h-16 px-4 sm:px-6 border-b border-gray-200">
             <Link
               href="/service-provider/dashboard"
@@ -225,7 +230,7 @@ const DashboardLayout = ({ children }) => {
               <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center">
                 <span className="text-white font-bold text-sm">BlackNSell</span>
               </div>
-              <span className="text-lg sm:text-xl font-bold text-gray-900 hidden sm:block">
+              <span className={`${poppins.className} text-lg sm:text-xl font-semibold text-gray-900 hidden sm:block`}>
                 Services Dashboard
               </span>
             </Link>
@@ -249,11 +254,10 @@ const DashboardLayout = ({ children }) => {
                 <Link
                   key={item.name}
                   href={item.href}
-                  className={`flex items-center space-x-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                    isActive
-                      ? "bg-indigo-50 text-indigo-700 border-r-4 border-indigo-700"
-                      : "text-gray-700 hover:bg-gray-50 hover:text-indigo-600"
-                  }`}
+                  className={`flex items-center space-x-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${isActive
+                    ? "bg-indigo-50 text-indigo-700 border-r-4 border-indigo-700"
+                    : "text-gray-700 hover:bg-gray-50 hover:text-indigo-600"
+                    }`}
                 >
                   <Icon className="h-5 w-5" />
                   <span>{item.name}</span>
@@ -262,7 +266,6 @@ const DashboardLayout = ({ children }) => {
             })}
           </nav>
 
-          {/* Profile Section */}
           <div className="p-4 sm:p-6 border-t border-gray-200">
             <div className="flex items-center space-x-3 p-3 rounded-lg bg-gray-50">
               <img
@@ -284,7 +287,7 @@ const DashboardLayout = ({ children }) => {
         </div>
 
         {/* Main Content */}
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto">
+        <main className="flex-1 p-3 sm:p-4 lg:p-5 overflow-y-auto">
           {children}
         </main>
       </div>
@@ -292,7 +295,7 @@ const DashboardLayout = ({ children }) => {
       {/* Mobile Sidebar Overlay */}
       {sidebarOpen && (
         <div
-          className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
+          className="fixed inset-0 bg-black opacity-70 z-40 lg:hidden"
           onClick={toggleSidebar}
           aria-label="Close sidebar overlay"
         />
