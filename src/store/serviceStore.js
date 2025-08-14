@@ -51,11 +51,12 @@ const apiCall = async (endpoint, options = {}) => {
     return data;
   } catch (error) {
     console.error("API call failed:", error);
-    if (error.message.includes("Please login to access this resource")) {
+    console.log("error-messageconsole.log();", error.message)
+    // if (error.message.includes("Please login to access this resource")) {
       // Handle unauthorized error (e.g., redirect to login)
-      useServiceProviderStore.getState().logout();
-      toast.error("Session expired. Please log in again.");
-    }
+      // useServiceProviderStore.getState().logout();
+    //   toast.error("Session expired. Please log in again.");
+    // }
     throw error;
   }
 };
@@ -315,7 +316,7 @@ const useServiceProviderStore = create(
           } catch (error) {
             console.error("Logout API call failed:", error);
           } finally {
-            clearAuthCookie();
+            // clearAuthCookie();
             set((state) => {
               state.serviceProvider = null;
               state.token = null;
@@ -437,10 +438,6 @@ const useServiceProviderStore = create(
           });
         },
 
-        fetchServiceProviderMessages: async () => {
-          console.log("working");
-        },
-
         // ===== MESSAGING ACTIONS =====
         fetchConversations: async (filters = {}) => {
           set((state) => {
@@ -463,7 +460,7 @@ const useServiceProviderStore = create(
 
             // Use the correct endpoint that matches your backend
             const data = await apiCall(
-              `/service-provider/get-service-provider-conversations?${queryParams}`
+              `/service-provider/get-conversations?${queryParams}`
             );
 
             console.log("Conversations API response:", data);
@@ -506,6 +503,7 @@ const useServiceProviderStore = create(
             console.error("Error marking message as read:", error);
             set((state) => {
               state.error = error.message || "Failed to mark message as read";
+              state.isLoading = false;
             });
             throw error;
           }

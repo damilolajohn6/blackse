@@ -19,7 +19,26 @@ import {
 import DashboardLayout from "@/components/serviceProvider/Layout/DashboardLayout";
 import useServiceProviderStore from "@/store/serviceStore";
 import { toast } from "react-toastify";
-import { Jost } from "next/font/google";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectLabel,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
+import { Poppins, Jost } from "next/font/google";
+const poppins = Poppins(
+  {
+    subsets: ["latin"],
+    weight: ["100", "200", "300", "400", "500", "600", "700", "800"]
+  },
+)
 const jost = Jost(
   {
     subsets: ["latin"],
@@ -172,7 +191,7 @@ const Bookings = () => {
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <Search className="h-5 w-5 text-gray-400" />
               </div>
-              <input
+              <Input
                 type="text"
                 placeholder="Search bookings..."
                 value={searchTerm}
@@ -182,25 +201,35 @@ const Bookings = () => {
             </div>
 
             <div className="flex items-center space-x-4">
-              <select
+              <Select
                 value={sortBy}
-                onChange={(e) => setSortBy(e.target.value)}
+                onValueChange={setSortBy}
                 className="form-input"
               >
-                <option value="scheduledAt">Date</option>
-                <option value="serviceDetails.name">Service</option>
-                <option value="status">Status</option>
-                <option value="payment.amount">Amount</option>
-              </select>
+                <SelectTrigger>
+                  <SelectValue placeholder="Sort By" /> 
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="scheduledAt">Date</SelectItem>
+                  <SelectItem value="serviceDetails.name">Service</SelectItem>
+                  <SelectItem value="status">Status</SelectItem>
+                  <SelectItem value="payment.amount">Amount</SelectItem>
+                </SelectContent>
+              </Select>
 
-              <select
+              <Select
                 value={sortOrder}
-                onChange={(e) => setSortOrder(e.target.value)}
+                onValueChange={setSortOrder}
                 className="form-input"
               >
-                <option value="desc">Newest First</option>
-                <option value="asc">Oldest First</option>
-              </select>
+                <SelectTrigger>
+                  <SelectValue placeholder="Date" /> 
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="desc">Newest First</SelectItem>
+                  <SelectItem value="asc">Oldest First</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
         </div>

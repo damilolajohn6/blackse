@@ -9,6 +9,9 @@ import useShopStore from "@/store/shopStore";
 import useProductStore from "@/store/productStore";
 import { FaPlus, FaEdit, FaTrash, FaEye, FaBolt } from "react-icons/fa";
 import { Label } from "@/components/ui/label";
+import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Eye, Edit, Trash2, Zap, Star, ShoppingCart } from 'lucide-react';
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -18,7 +21,16 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
+} from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
+import { Jost } from "next/font/google";
+
+const jost = Jost(
+  {
+    subsets: ["latin"],
+    weight: ["100", "200", "300", "400", "500", "600", "700", "800"]
+  },
+)
 
 const ListProducts = () => {
   const router = useRouter();
@@ -98,8 +110,8 @@ const ListProducts = () => {
         error.response?.status === 403
           ? "You are not authorized to delete this product"
           : error.response?.status === 404
-          ? "Product not found"
-          : error.message || "Failed to delete product";
+            ? "Product not found"
+            : error.message || "Failed to delete product";
       toast.error(errorMessage, { toastId: "delete-error" });
     }
   };
@@ -189,10 +201,10 @@ const ListProducts = () => {
           {isSeller && (
             <Link
               href="/shop/products/create"
-              className="flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors text-sm sm:text-base"
+              className="px-3 flex items-center space-x-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors text-sm sm:text-base"
             >
-              <FaPlus className="h-5 w-5" />
-              <span className="whitespace-nowrap">Create Product</span>
+              <FaPlus className="" />
+              <span className="whitespace-nowrap text-sm">Create Product</span>
             </Link>
           )}
           <Select
@@ -240,7 +252,7 @@ const ListProducts = () => {
               </Label>
               <Select
                 value={flashSaleForm.productId}
-                onChange={(e) =>
+                onValueChange={(e) =>
                   setFlashSaleForm({
                     ...flashSaleForm,
                     productId: e.target.value,
@@ -348,13 +360,13 @@ const ListProducts = () => {
             onClick={() =>
               selectedCategory
                 ? fetchProductsByCategory(
-                    seller._id,
-                    selectedCategory,
-                    sellerToken
-                  )
+                  seller._id,
+                  selectedCategory,
+                  sellerToken
+                )
                 : seller?._id && sellerToken
-                ? fetchShopProducts(seller._id, sellerToken)
-                : null
+                  ? fetchShopProducts(seller._id, sellerToken)
+                  : null
             }
             className="mt-4 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
           >
@@ -372,8 +384,7 @@ const ListProducts = () => {
           {displayedProducts.map((product) => (
             <div
               key={product._id}
-              className="bg-white shadow-md rounded-lg overflow-hidden hover:shadow-lg transition-shadow flex flex-col"
-            >
+              className="bg-white shadow-md rounded-lg overflow-hidden hover:shadow-lg transition-shadow flex flex-col">
               <div className="relative w-full h-48 sm:h-52 md:h-56">
                 {product.images && product.images[0]?.url ? (
                   <Image
@@ -396,15 +407,19 @@ const ListProducts = () => {
                 )}
               </div>
               <div className="p-4 flex flex-col justify-between flex-1">
-                <div>
+                <div className="space-y-2">
                   <h2 className="text-base sm:text-lg font-semibold text-gray-900 truncate">
                     {product.name}
                   </h2>
                   <p className="text-sm text-gray-600">
-                    Primary: {product.categories?.join(", ") || "N/A"}
+                    <div className={jost.className}>Primary</div> 
+                    <div className="flex flex-wrap gap-1">
+                      {product.categories.map((c, i)=> <Badge variant="secondary" key={i}>{c}</Badge>) || "N/A"}
+                    </div>
                   </p>
                   <p className="text-sm text-gray-600">
-                    Cultural: {product.culturalCategories?.[0] || "N/A"}
+                    <div className={jost.className}>Cultural</div> 
+                    <Badge variant="secondary">{product.culturalCategories?.[0] || "N/A"}</Badge>
                   </p>
                   <p className="text-lg font-bold text-blue-600 mt-2">
                     {product.flashSale?.isActive &&
@@ -462,6 +477,178 @@ const ListProducts = () => {
                 </div>
               </div>
             </div>
+
+            // <Card className="group relative overflow-hidden bg-gradient-card shadow-card hover:shadow-glow transition-smooth hover:scale-[1.02] animate-float">
+            //   {/* Flash Sale Badge */}
+            //   {product.flashSale?.isActive && (
+            //     <div className="absolute top-3 left-3 z-10">
+            //       <Badge className="bg-gradient-primary text-primary-foreground shadow-glow animate-pulse-glow">
+            //         <Zap className="w-3 h-3 mr-1" />
+            //         Flash Sale {discountPercentage}% OFF
+            //       </Badge>
+            //     </div>
+            //   )}
+
+            //   {/* Low Stock Badge */}
+            //   {product.stock === 0 && (
+            //     <div className="absolute top-3 right-3 z-10">
+            //       <Badge variant="destructive" className="shadow-md">
+            //         Low Stock
+            //       </Badge>
+            //     </div>
+            //   )}
+
+            //   {/* Product Image */}
+            //   <div className="relative aspect-[4/3] overflow-hidden">
+            //     {product.images && product.images[0]?.url ? (
+            //       <img
+            //         src={product.images[0].url}
+            //         alt={product.name}
+            //         className="w-full h-full object-cover transition-smooth group-hover:scale-110"
+            //       />
+            //     ) : (
+            //       <div className="w-full h-full bg-gradient-to-br from-muted to-muted/50 flex items-center justify-center">
+            //         <div className="text-center text-muted-foreground">
+            //           <ShoppingCart className="w-12 h-12 mx-auto mb-2 opacity-50" />
+            //           <span className="text-sm">No Image</span>
+            //         </div>
+            //       </div>
+            //     )}
+
+            //     {/* Overlay Gradient */}
+            //     <div className="absolute inset-0 bg-gradient-overlay opacity-0 group-hover:opacity-100 transition-smooth" />
+
+            //     {/* Action Buttons Overlay */}
+            //     <div className="absolute inset-0 flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-smooth">
+            //       <Button
+            //         variant="glow"
+            //         size="icon"
+            //         className="backdrop-blur-sm"
+            //       >
+            //         <Eye className="w-4 h-4" />
+            //       </Button>
+
+            //       {isSeller && (
+            //         <>
+            //           <Button
+            //             variant="success"
+            //             size="icon"
+            //             className="backdrop-blur-sm"
+            //           >
+            //             <Edit className="w-4 h-4" />
+            //           </Button>
+
+            //           <Button
+            //             variant="destructive"
+            //             size="icon"
+            //             className="backdrop-blur-sm"
+            //           >
+            //             <Trash2 className="w-4 h-4" />
+            //           </Button>
+
+            //           {product.flashSale?.isActive && (
+            //             <Button
+            //               variant="warning"
+            //               size="icon"
+            //               className="backdrop-blur-sm"
+            //             >
+            //               <Zap className="w-4 h-4" />
+            //             </Button>
+            //           )}
+            //         </>
+            //       )}
+            //     </div>
+            //   </div>
+
+            //   <CardContent className="p-4 space-y-3">
+            //     {/* Product Name */}
+            //     <h3 className="font-semibold text-lg text-card-foreground line-clamp-2 leading-tight">
+            //       {product.name}
+            //     </h3>
+
+            //     {/* Rating */}
+            //     {product.rating && (
+            //       <div className="flex items-center gap-1">
+            //         <div className="flex">
+            //           {[...Array(5)].map((_, i) => (
+            //             <Star
+            //               key={i}
+            //               className={`w-4 h-4 ${i < Math.floor(product.rating)
+            //                 ? 'text-warning fill-warning'
+            //                 : 'text-muted-foreground'
+            //                 }`}
+            //             />
+            //           ))}
+            //         </div>
+            //         <span className="text-sm text-muted-foreground">
+            //           ({product.reviews || 0})
+            //         </span>
+            //       </div>
+            //     )}
+
+            //     {/* Categories */}
+            //     <div className="space-y-2">
+            //       {product.categories.length > 0 && (
+            //         <div>
+            //           <p className="text-xs font-medium text-muted-foreground mb-1">Categories</p>
+            //           <div className="flex flex-wrap gap-1">
+            //             {product.categories.slice(0, 3).map((category, index) => (
+            //               <Badge key={index} variant="secondary" className="text-xs">
+            //                 {category}
+            //               </Badge>
+            //             ))}
+            //             {product.categories.length > 3 && (
+            //               <Badge variant="outline" className="text-xs">
+            //                 +{product.categories.length - 3}
+            //               </Badge>
+            //             )}
+            //           </div>
+            //         </div>
+            //       )}
+
+            //       {product.culturalCategories && product.culturalCategories[0] && (
+            //         <div>
+            //           <p className="text-xs font-medium text-muted-foreground mb-1">Cultural</p>
+            //           <Badge variant="outline" className="text-xs">
+            //             {product.culturalCategories[0]}
+            //           </Badge>
+            //         </div>
+            //       )}
+            //     </div>
+
+            //     {/* Pricing */}
+            //     <div className="flex items-baseline gap-2">
+            //       <span className="text-2xl font-bold text-primary">
+            //         ${product.price.toFixed(2)}
+            //       </span>
+            //       {product.flashSale?.isActive && (
+            //         <span className="text-sm text-muted-foreground line-through">
+            //           ${product.price.toFixed(2)}
+            //         </span>
+            //       )}
+            //     </div>
+
+            //     {/* Stock Information */}
+            //     <div className="flex items-center justify-between text-sm">
+            //       <span className={`font-medium ${product.flashSale?.isActive ? 'text-destructive' : 'text-muted-foreground'}`}>
+            //         Stock:
+            //         {product.flashSale?.isActive? product.flashSale.stockLimit : product.stock}
+            //       </span>
+            //       {!isSeller && (
+            //         <Button
+            //           size="sm"
+            //           variant="outline"
+            //           onClick={() => onAddToCart?.(product._id)}
+            //           className="ml-auto"
+            //         >
+            //           <ShoppingCart className="w-4 h-4 mr-1" />
+            //           Add to Cart
+            //         </Button>
+            //       )}
+            //     </div>
+            //   </CardContent>
+            // </Card>
+
           ))}
         </div>
       )}

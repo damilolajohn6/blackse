@@ -82,6 +82,8 @@ const ProductDetailsPage = () => {
   const [activeTab, setActiveTab] = useState("description");
   const [quantity, setQuantity] = useState(1);
   const [selectedImage, setSelectedImage] = useState(0);
+  const [isVideoLoading, setIsVideoLoading] = useState(false);
+  const videoRef = useRef(null);
 
   const modalRef = useRef(null);
 
@@ -171,6 +173,9 @@ const ProductDetailsPage = () => {
   const handleMediaSelect = (url, type) => {
     setSelectedMedia(url);
     setSelectedMediaType(type);
+    if (type === "video") {
+      setIsVideoLoading(true);
+    }
   };
 
   const handleShare = async () => {
@@ -367,26 +372,35 @@ const ProductDetailsPage = () => {
 
               <div className="aspect-square relative">
                 {selectedMediaType === "video" ? (
-                  <ReactPlayer
-                    url={selectedMedia}
-                    controls={true}
-                    width="100%"
-                    height="100%"
-                    className="react-player"
-                    config={{
-                      youtube: { playerVars: { showinfo: 0 } },
-                      file: {
-                        attributes: {
-                          controlsList: "nodownload",
-                          preload: "metadata",
-                        },
-                      },
-                    }}
-                    onError={(e) => {
-                      console.error("Video playback error:", e);
-                      toast.error("Failed to play video");
-                    }}
-                  />
+                  <div className="relative w-full h-full">
+                    {isVideoLoading && (
+                      <div className="absolute inset-0 flex items-center justify-center bg-gray-100">
+                        <div className="w-12 h-12 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
+                      </div>
+                    )}
+                    <video
+                      ref={videoRef}
+                      src={selectedMedia}
+                      controls
+                      autoPlay
+                      preload="auto"
+                      crossOrigin="anonymous"
+                      controlsList="nodownload"
+                      className="w-full h-full object-cover"
+                      onCanPlay={() => setIsVideoLoading(false)}
+                      onError={(e) => {
+                        console.error("Video playback error:", e);
+                        toast.error(
+                          "Failed to play video. Please try another."
+                        );
+                        if (product.images?.length > 0) {
+                          setSelectedMedia(product.images[0].url);
+                          setSelectedMediaType("image");
+                        }
+                        setIsVideoLoading(false);
+                      }}
+                    />
+                  </div>
                 ) : selectedMedia ? (
                   <Image
                     src={selectedMedia}
@@ -436,10 +450,12 @@ const ProductDetailsPage = () => {
                         : "hover:shadow-md"
                     }`}
                   >
-                    <video
-                      src={video.url}
-                      className="object-cover w-full h-full"
-                      muted
+                    <Image
+                      src={video.url.replace(/\.mp4$/, ".jpg")}
+                      alt={`${product.name} video thumbnail ${index + 1}`}
+                      fill
+                      className="object-cover"
+                      sizes="100px"
                     />
                     <div className="absolute inset-0 flex items-center justify-center bg-black/20">
                       <div className="text-white">

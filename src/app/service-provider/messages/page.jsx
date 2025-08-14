@@ -83,9 +83,9 @@ const Messages = () => {
   useEffect(() => {
     const loadConversations = async () => {
       if (!mounted || !serviceProvider?._id) return;
-
       try {
         console.log("Fetching conversations...");
+        // Use the correct endpoint from your backend
         await fetchConversations({
           page: 1,
           limit: 20,
@@ -103,6 +103,7 @@ const Messages = () => {
       loadConversations();
     } else if (mounted) {
       console.warn("No serviceProvider ID available");
+      // Don't show error toast immediately, user might still be loading
     }
   }, [fetchConversations, serviceProvider, mounted]);
 
@@ -158,6 +159,7 @@ const Messages = () => {
       return null;
     }
 
+    // Handle case where members array has proper user objects
     const otherUser = conversation.members.find((member) => {
       const memberId = member._id || member;
       return (
@@ -299,6 +301,7 @@ const Messages = () => {
                   otherUser.email ||
                   "Unknown User";
 
+                // Handle avatar URL with fallback
                 const avatarUrl =
                   otherUser.avatar?.url || "/api/placeholder/40/40";
 
@@ -323,6 +326,7 @@ const Messages = () => {
                               e.target.src = "/api/placeholder/40/40";
                             }}
                           />
+                          {/* Online indicator - you can add online status logic here */}
                           <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-white"></div>
                         </div>
                         <div className="flex-1 min-w-0">

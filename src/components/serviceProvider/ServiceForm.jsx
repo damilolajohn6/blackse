@@ -13,6 +13,21 @@ import {
 } from "lucide-react";
 import { uploadToCloudinary } from "@/lib/cloudinary";
 import { toast } from "react-toastify";
+import { Label } from "@/components/ui/label";
+import { Button } from '@/components/ui/button';
+// import { Eye, Edit, Trash2, Zap, ShoppingCart } from 'lucide-react';
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectLabel,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
 
 const ServiceForm = ({ formData, onInputChange, onSubmit, isLoading }) => {
   const [imageUploading, setImageUploading] = useState(false);
@@ -128,8 +143,8 @@ const ServiceForm = ({ formData, onInputChange, onSubmit, isLoading }) => {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
-            <label className="form-label">Service Name *</label>
-            <input
+            <Label className="form-label my-2">Service Name</Label>
+            <Input
               type="text"
               value={formData.name}
               onChange={(e) => onInputChange("name", e.target.value)}
@@ -138,28 +153,31 @@ const ServiceForm = ({ formData, onInputChange, onSubmit, isLoading }) => {
               required
             />
           </div>
-
           <div>
-            <label className="form-label">Category *</label>
-            <select
+            <Label className="form-label my-2">Category</Label>
+            <Select
               value={formData.category}
-              onChange={(e) => onInputChange("category", e.target.value)}
+              onValueChange={(value) => onInputChange("category", value)}
               className="form-input"
               required
             >
-              <option value="">Select a category</option>
-              {serviceCategories.map((category) => (
-                <option key={category} value={category}>
-                  {category}
-                </option>
-              ))}
-            </select>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Select a category" />
+              </SelectTrigger>
+              <SelectContent>
+                {serviceCategories.map((category) => (
+                  <SelectItem key={category} value={category}>
+                    {category}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </div>
 
         <div className="mt-6">
-          <label className="form-label">Description *</label>
-          <textarea
+          <Label className="form-label my-2">Description</Label>
+          <Textarea
             value={formData.description}
             onChange={(e) => onInputChange("description", e.target.value)}
             className="form-input"
@@ -179,12 +197,12 @@ const ServiceForm = ({ formData, onInputChange, onSubmit, isLoading }) => {
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div>
-            <label className="form-label">Price *</label>
+            <Label className="form-label my-2">Price</Label>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <DollarSign className="h-4 w-4 text-gray-400" />
               </div>
-              <input
+              <Input
                 type="number"
                 step="0.01"
                 min="0"
@@ -198,24 +216,29 @@ const ServiceForm = ({ formData, onInputChange, onSubmit, isLoading }) => {
           </div>
 
           <div>
-            <label className="form-label">Pricing Type *</label>
-            <select
+            <Label className="form-label my-2">Pricing Type</Label>
+            <Select
               value={formData.pricingType}
               onChange={(e) => onInputChange("pricingType", e.target.value)}
               className="form-input"
             >
-              <option value="flat">Flat Rate</option>
-              <option value="hourly">Hourly Rate</option>
-            </select>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Pricing Type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="flat">Flat Rate</SelectItem>
+                <SelectItem value="hourly">Hourly Rate</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           <div>
-            <label className="form-label">Duration (optional)</label>
+            <Label className="form-label my-2">Duration (optional)</Label>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <Clock className="h-4 w-4 text-gray-400" />
               </div>
-              <input
+              <Input
                 type="text"
                 value={formData.duration}
                 onChange={(e) => onInputChange("duration", e.target.value)}
@@ -238,12 +261,12 @@ const ServiceForm = ({ formData, onInputChange, onSubmit, isLoading }) => {
           <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
             <Upload className="h-12 w-12 text-gray-400 mx-auto mb-4" />
             <div className="text-sm text-gray-600">
-              <label htmlFor="images" className="cursor-pointer">
+              <Label htmlFor="images" className="cursor-pointer">
                 <span className="font-medium text-indigo-600 hover:text-indigo-500">
                   Click to upload
                 </span>
                 <span> or drag and drop</span>
-              </label>
+              </Label>
               <input
                 id="images"
                 type="file"
@@ -290,7 +313,7 @@ const ServiceForm = ({ formData, onInputChange, onSubmit, isLoading }) => {
 
         <div className="space-y-4">
           <div className="flex items-center space-x-2">
-            <input
+            <Input
               type="text"
               value={newTag}
               onChange={(e) => setNewTag(e.target.value)}
@@ -300,13 +323,13 @@ const ServiceForm = ({ formData, onInputChange, onSubmit, isLoading }) => {
               className="form-input flex-1"
               placeholder="Add a tag..."
             />
-            <button
+            <Button
               type="button"
               onClick={addTag}
               className="btn btn-outline btn-sm"
             >
               <Plus className="h-4 w-4" />
-            </button>
+            </Button>
           </div>
 
           {formData.tags.length > 0 && (
@@ -339,7 +362,7 @@ const ServiceForm = ({ formData, onInputChange, onSubmit, isLoading }) => {
 
         <div className="space-y-4">
           <div className="flex items-center space-x-2">
-            <input
+            <Input
               type="text"
               value={newRequirement}
               onChange={(e) => setNewRequirement(e.target.value)}
@@ -349,13 +372,13 @@ const ServiceForm = ({ formData, onInputChange, onSubmit, isLoading }) => {
               className="form-input flex-1"
               placeholder="Add a requirement..."
             />
-            <button
+            <Button
               type="button"
               onClick={addRequirement}
               className="btn btn-outline btn-sm"
             >
               <Plus className="h-4 w-4" />
-            </button>
+            </Button>
           </div>
 
           {formData.requirements.length > 0 && (
@@ -389,7 +412,7 @@ const ServiceForm = ({ formData, onInputChange, onSubmit, isLoading }) => {
 
         <div className="space-y-4">
           <div className="flex items-center space-x-2">
-            <input
+            <Input
               type="text"
               value={newFeature}
               onChange={(e) => setNewFeature(e.target.value)}
@@ -399,13 +422,13 @@ const ServiceForm = ({ formData, onInputChange, onSubmit, isLoading }) => {
               className="form-input flex-1"
               placeholder="Add a feature..."
             />
-            <button
+            <Button
               type="button"
               onClick={addFeature}
               className="btn btn-outline btn-sm"
             >
               <Plus className="h-4 w-4" />
-            </button>
+            </Button>
           </div>
 
           {formData.features.length > 0 && (
@@ -432,13 +455,12 @@ const ServiceForm = ({ formData, onInputChange, onSubmit, isLoading }) => {
 
       {/* Submit Button */}
       <div className="flex justify-end">
-        <button
+        <Button
           type="submit"
           disabled={isLoading}
-          className="btn btn-primary btn-lg"
-        >
+          className="bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">
           {isLoading ? "Creating Service..." : "Create Service"}
-        </button>
+        </Button>
       </div>
     </form>
   );

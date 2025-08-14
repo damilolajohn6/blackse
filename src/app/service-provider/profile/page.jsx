@@ -1,5 +1,4 @@
 "use client";
-
 import { useState, useRef } from "react";
 import { 
   Camera, 
@@ -22,6 +21,18 @@ import DashboardLayout from "@/components/serviceProvider/Layout/DashboardLayout
 import useServiceProviderStore from "@/store/serviceStore";
 import { uploadToCloudinary } from "@/lib/cloudinary";
 import { toast } from "react-toastify";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { Jost } from "next/font/google";
+
+const jost = Jost(
+  { 
+    subsets: ["latin"], 
+    weight: ["100", "200", "300", "400", "500", "600", "700", "800"]
+  }, 
+)
 
 const ProfilePage = () => {
   const {
@@ -180,35 +191,35 @@ const ProfilePage = () => {
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between">
             <div>
               <h1 className="text-2xl font-bold text-gray-900">Profile</h1>
-              <p className="text-gray-600 mt-1">Manage your profile information and settings</p>
+              <p className={"text-gray-600 mt-1 " + jost.className}>Manage your profile information and settings</p>
             </div>
             {activeTab === "personal" && (
               <div className="flex items-center space-x-4 mt-4 lg:mt-0">
                 {isEditing ? (
                   <div className="flex space-x-2">
-                    <button
+                    <Button
                       onClick={() => setIsEditing(false)}
                       className="btn btn-outline px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-100"
                     >
                       Cancel
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                       onClick={handleSaveProfile}
                       disabled={profileUpdateLoading}
                       className="btn btn-primary px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       <Save className="h-4 w-4 mr-2" />
                       {profileUpdateLoading ? "Saving..." : "Save Changes"}
-                    </button>
+                    </Button>
                   </div>
                 ) : (
-                  <button
+                  <Button
                     onClick={() => setIsEditing(true)}
                     className="btn btn-primary px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
                   >
                     <Edit3 className="h-4 w-4 mr-2" />
                     Edit Profile
-                  </button>
+                  </Button>
                 )}
               </div>
             )}
@@ -273,7 +284,7 @@ const ProfilePage = () => {
                 </div>
                 <div className="mt-4 sm:mt-0">
                   <h3 className="text-lg font-semibold text-gray-900">Profile Picture</h3>
-                  <p className="text-sm text-gray-600">
+                  <p className={"text-sm text-gray-600 " + jost.className}>
                     {isEditing
                       ? "Click the image to upload a new profile picture (max 5MB)"
                       : "Your profile picture is displayed to clients"}
@@ -287,10 +298,10 @@ const ProfilePage = () => {
               {/* Personal Info Form */}
               <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <Label className="block text-sm font-medium text-gray-700 mb-1">
                     First Name
-                  </label>
-                  <input
+                  </Label>
+                  <Input
                     type="text"
                     value={formData.fullname.firstName}
                     onChange={(e) => handleInputChange("fullname.firstName", e.target.value)}
@@ -300,10 +311,10 @@ const ProfilePage = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <Label className="block text-sm font-medium text-gray-700 mb-1">
                     Last Name
-                  </label>
-                  <input
+                  </Label>
+                  <Input
                     type="text"
                     value={formData.fullname.lastName}
                     onChange={(e) => handleInputChange("fullname.lastName", e.target.value)}
@@ -313,10 +324,10 @@ const ProfilePage = () => {
                   />
                 </div>
                 <div className="sm:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <Label className="block text-sm font-medium text-gray-700 mb-1">
                     Middle Name (Optional)
-                  </label>
-                  <input
+                  </Label>
+                  <Input
                     type="text"
                     value={formData.fullname.middleName}
                     onChange={(e) => handleInputChange("fullname.middleName", e.target.value)}
@@ -326,10 +337,10 @@ const ProfilePage = () => {
                   />
                 </div>
                 <div className="sm:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <Label className="block text-sm font-medium text-gray-700 mb-1">
                     Description
-                  </label>
-                  <textarea
+                  </Label>
+                  <Textarea
                     value={formData.description}
                     onChange={(e) => handleInputChange("description", e.target.value)}
                     disabled={!isEditing}
@@ -343,11 +354,11 @@ const ProfilePage = () => {
                   </p>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <Label className="block text-sm font-medium text-gray-700 mb-1">
                     Phone Number
-                  </label>
+                  </Label>
                   <div className="flex space-x-2">
-                    <input
+                    <Input
                       type="text"
                       value={formData.phoneNumber.countryCode}
                       onChange={(e) => handleInputChange("phoneNumber.countryCode", e.target.value)}
@@ -355,7 +366,7 @@ const ProfilePage = () => {
                       className="w-20 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-gray-100"
                       placeholder="+1"
                     />
-                    <input
+                    <Input
                       type="tel"
                       value={formData.phoneNumber.number}
                       onChange={(e) => handleInputChange("phoneNumber.number", e.target.value)}
@@ -366,10 +377,10 @@ const ProfilePage = () => {
                   </div>
                 </div>
                 <div className="sm:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <Label className="block text-sm font-medium text-gray-700 mb-1">
                     Address
-                  </label>
-                  <input
+                  </Label>
+                  <Input
                     type="text"
                     value={formData.address.street}
                     onChange={(e) => handleInputChange("address.street", e.target.value)}
@@ -379,7 +390,7 @@ const ProfilePage = () => {
                   />
                 </div>
                 <div>
-                  <input
+                  <Input
                     type="text"
                     value={formData.address.city}
                     onChange={(e) => handleInputChange("address.city", e.target.value)}
@@ -389,7 +400,7 @@ const ProfilePage = () => {
                   />
                 </div>
                 <div>
-                  <input
+                  <Input
                     type="text"
                     value={formData.address.state}
                     onChange={(e) => handleInputChange("address.state", e.target.value)}
@@ -399,7 +410,7 @@ const ProfilePage = () => {
                   />
                 </div>
                 <div>
-                  <input
+                  <Input
                     type="text"
                     value={formData.address.country}
                     onChange={(e) => handleInputChange("address.country", e.target.value)}
@@ -409,7 +420,7 @@ const ProfilePage = () => {
                   />
                 </div>
                 <div>
-                  <input
+                  <Input
                     type="text"
                     value={formData.address.zipCode}
                     onChange={(e) => handleInputChange("address.zipCode", e.target.value)}
@@ -419,9 +430,9 @@ const ProfilePage = () => {
                   />
                 </div>
                 <div className="sm:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <Label className="block text-sm font-medium text-gray-700 mb-1">
                     Tags
-                  </label>
+                  </Label>
                   <div className="flex flex-wrap gap-2 mb-2">
                     {formData.tags.map((tag) => (
                       <div
@@ -442,7 +453,7 @@ const ProfilePage = () => {
                   </div>
                   {isEditing && (
                     <div className="flex space-x-2">
-                      <input
+                      <Input
                         type="text"
                         value={newTag}
                         onChange={(e) => setNewTag(e.target.value)}
@@ -450,13 +461,13 @@ const ProfilePage = () => {
                         placeholder="Add a tag (e.g., plumbing, electrician)"
                         maxLength={20}
                       />
-                      <button
+                      <Button
                         onClick={handleAddTag}
                         className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
                       >
                         <Tag className="h-4 w-4 mr-2 inline" />
                         Add
-                      </button>
+                      </Button>
                     </div>
                   )}
                 </div>
@@ -537,13 +548,13 @@ const ProfilePage = () => {
                   </label>
                 </div>
               </div>
-              <button
+              <Button
                 onClick={handleNotificationUpdate}
                 className="btn btn-primary px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
               >
                 <Save className="h-4 w-4 mr-2" />
                 Save Notification Settings
-              </button>
+              </Button>
             </div>
           )}
 

@@ -24,9 +24,31 @@ import ServiceModal from "@/components/serviceProvider/ServiceModal";
 import DeleteConfirmModal from "@/components/serviceProvider/common/DeleteConfirmModal";
 import useServiceProviderStore from "@/store/serviceStore";
 import { toast } from "react-toastify";
+import { Label } from "@/components/ui/label";
+import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+// import { Eye, Edit, Trash2, Zap, Star, ShoppingCart } from 'lucide-react';
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectLabel,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
 
-import { Poppins } from "next/font/google";
+
+import { Poppins, Jost } from "next/font/google";
 const poppins = Poppins(
+  {
+    subsets: ["latin"],
+    weight: ["100", "200", "300", "400", "500", "600", "700", "800"]
+  },
+)
+const jost = Jost(
   {
     subsets: ["latin"],
     weight: ["100", "200", "300", "400", "500", "600", "700", "800"]
@@ -119,19 +141,19 @@ const ServicesPage = () => {
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between">
             <div>
               <h1 className="text-2xl font-bold text-gray-900">Services</h1>
-              <p className="text-gray-600 mt-1">
+              <p className={`text-gray-600 mt-1 ${jost.className}`}>
                 Manage your service offerings and pricing
               </p>
             </div>
-            <div className="flex items-center space-x-4 mt-4 lg:mt-0">
+            <Button className="flex items-center space-x-4 mt-4 lg:mt-0 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">
               <Link
                 href="/service-provider/services/new"
-                className="btn btn-primary"
+                className="btn btn-primary flex items-center gap-2"
               >
-                <Plus className="h-4 w-4 mr-2" />
+                <Plus className="size-4" />
                 Add Service
               </Link>
-            </div>
+            </Button>
           </div>
         </div>
 
@@ -145,7 +167,7 @@ const ServicesPage = () => {
                 </div>
               </div>
               <div className="ml-3">
-                <p className="text-sm font-medium text-gray-500">
+                <p className={"text-sm font-medium text-gray-500 " + jost.className}>
                   Total Services
                 </p>
                 <p className="text-2xl font-bold text-gray-900">
@@ -163,7 +185,7 @@ const ServicesPage = () => {
                 </div>
               </div>
               <div className="ml-3">
-                <p className="text-sm font-medium text-gray-500">Avg. Price</p>
+                <p className={"text-sm font-medium text-gray-500 " + jost.className}>Avg. Price</p>
                 <p className="text-2xl font-bold text-gray-900">
                   $
                   {servicesOffered.length > 0
@@ -187,7 +209,7 @@ const ServicesPage = () => {
                 </div>
               </div>
               <div className="ml-3">
-                <p className="text-sm font-medium text-gray-500">
+                <p className={"text-sm font-medium text-gray-500 " + jost.className}>
                   Popular Service
                 </p>
                 <p className="text-lg font-bold text-gray-900">
@@ -208,7 +230,7 @@ const ServicesPage = () => {
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <Search className="h-5 w-5 text-gray-400" />
               </div>
-              <input
+              <Input
                 type="text"
                 placeholder="Search services..."
                 value={searchTerm}
@@ -219,26 +241,35 @@ const ServicesPage = () => {
 
             {/* Filters */}
             <div className="flex items-center space-x-4">
-              <select
+              <Select
                 value={filterBy}
-                onChange={(e) => setFilterBy(e.target.value)}
+                onValueChange={setFilterBy}
                 className="form-input"
               >
-                <option value="all">All Types</option>
-                <option value="flat">Flat Rate</option>
-                <option value="hourly">Hourly Rate</option>
-              </select>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="All Types" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Types</SelectItem>
+                  <SelectItem value="flat">Flat Rate</SelectItem>
+                  <SelectItem value="hourly">Hourly Rate</SelectItem>
+                </SelectContent>
+              </Select>
 
-              <select
+              <Select
                 value={sortBy}
-                onChange={(e) => setSortBy(e.target.value)}
+                onValueChange={setSortBy}
                 className="form-input"
               >
-                <option value="name">Name</option>
-                <option value="price">Price</option>
-                <option value="pricingType">Type</option>
-              </select>
-
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Name" />
+                </SelectTrigger>
+                <SelectContent>
+                <SelectItem value="name">Name</SelectItem>
+                <SelectItem value="price">Price</SelectItem>
+                <SelectItem value="pricingType">Type</SelectItem>
+                </SelectContent>
+              </Select>
               <button
                 onClick={() =>
                   setSortOrder(sortOrder === "asc" ? "desc" : "asc")
