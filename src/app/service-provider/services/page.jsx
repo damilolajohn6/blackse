@@ -80,6 +80,8 @@ const ServicesPage = () => {
     fetchServicesOffered();
   }, [fetchServicesOffered]);
 
+  console.log("servicesOffered" ,servicesOffered)
+
   // Filter and sort services
   const filteredAndSortedServices = servicesOffered
     .filter((service) => {

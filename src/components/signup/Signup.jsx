@@ -10,9 +10,12 @@ import useAuthStore from "@/store/authStore";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Eye, EyeOff, Upload, User } from "lucide-react";
+import { Upload, User } from "lucide-react";
+import { PasswordInput } from "../custom/password-input";
+import PhoneField from "@/components/ui/phoneField";
+import { motion, AnimatePresence } from "framer-motion";
 
 import { Inter } from "next/font/google";
 const inter = Inter(
@@ -32,7 +35,6 @@ const Signup = () => {
     avatar: null,
   });
   const [avatarPreview, setAvatarPreview] = useState(null);
-  const [visible, setVisible] = useState(false);
   const [otp, setOtp] = useState("");
   const [showOtpInput, setShowOtpInput] = useState(false);
   const [errors, setErrors] = useState({});
@@ -132,6 +134,8 @@ const Signup = () => {
       role: "user", // Default role
     };
 
+
+
     const result = await signup(userData);
     if (result.success) {
       setShowOtpInput(true);
@@ -163,470 +167,550 @@ const Signup = () => {
   };
 
   return (
-    // <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
-    //   <div className="sm:mx-auto sm:w-full sm:max-w-md">
-    //     <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-    //       {showOtpInput ? "Verify Your Account" : "Register as a new user"}
-    //     </h2>
-    //   </div>
-    //   <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-    //     <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
-    //       {!showOtpInput ? (
-    //         <form className="space-y-6" onSubmit={handleSubmit}>
-    //           <div>
-    //             <Label
-    //               htmlFor="firstName"
-    //               className="block text-sm font-medium text-gray-700"
-    //             >
-    //               First Name
-    //             </Label>
-    //             <Input
-    //               type="text"
-    //               name="fullname.firstName"
-    //               autoComplete="given-name"
-    //               required
-    //               value={formData.fullname.firstName}
-    //               onChange={handleInputChange}
-    //               className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-    //             />
-    //             {errors.firstName && (
-    //               <p className="text-red-500 text-xs mt-1">
-    //                 {errors.firstName}
-    //               </p>
-    //             )}
-    //           </div>
-    //           <div>
-    //             <Label
-    //               htmlFor="lastName"
-    //               className="block text-sm font-medium text-gray-700"
-    //             >
-    //               Last Name
-    //             </Label>
-    //             <Input
-    //               type="text"
-    //               name="fullname.lastName"
-    //               autoComplete="family-name"
-    //               required
-    //               value={formData.fullname.lastName}
-    //               onChange={handleInputChange}
-    //               className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-    //             />
-    //             {errors.lastName && (
-    //               <p className="text-red-500 text-xs mt-1">{errors.lastName}</p>
-    //             )}
-    //           </div>
-    //           <div>
-    //             <Label
-    //               htmlFor="middleName"
-    //               className="block text-sm font-medium text-gray-700"
-    //             >
-    //               Middle Name (Optional)
-    //             </Label>
-    //             <Input
-    //               type="text"
-    //               name="fullname.middleName"
-    //               value={formData.fullname.middleName}
-    //               onChange={handleInputChange}
-    //               className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-    //             />
-    //           </div>
-    //           <div>
-    //             <Label
-    //               htmlFor="username"
-    //               className="block text-sm font-medium text-gray-700"
-    //             >
-    //               Username
-    //             </Label>
-    //             <Input
-    //               type="text"
-    //               name="username"
-    //               autoComplete="username"
-    //               required
-    //               value={formData.username}
-    //               onChange={handleInputChange}
-    //               className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-    //             />
-    //             {errors.username && (
-    //               <p className="text-red-500 text-xs mt-1">{errors.username}</p>
-    //             )}
-    //           </div>
-    //           <div>
-    //             <Label
-    //               htmlFor="email"
-    //               className="block text-sm font-medium text-gray-700"
-    //             >
-    //               Email address
-    //             </Label>
-    //             <Input
-    //               type="email"
-    //               name="email"
-    //               autoComplete="email"
-    //               required
-    //               value={formData.email}
-    //               onChange={handleInputChange}
-    //               className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-    //             />
-    //             {errors.email && (
-    //               <p className="text-red-500 text-xs mt-1">{errors.email}</p>
-    //             )}
-    //           </div>
-    //           <div>
-    //             <Label
-    //               htmlFor="password"
-    //               className="block text-sm font-medium text-gray-700"
-    //             >
-    //               Password
-    //             </Label>
-    //             <div className="mt-1 relative">
-    //               <Input
-    //                 type={visible ? "text" : "password"}
-    //                 name="password"
-    //                 autoComplete="new-password"
-    //                 required
-    //                 value={formData.password}
-    //                 onChange={handleInputChange}
-    //                 className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-    //               />
-    //               {visible ? (
-    //                 <AiOutlineEye
-    //                   className="absolute right-2 top-2 cursor-pointer"
-    //                   size={25}
-    //                   onClick={() => setVisible(false)}
-    //                 />
-    //               ) : (
-    //                 <AiOutlineEyeInvisible
-    //                   className="absolute right-2 top-2 cursor-pointer"
-    //                   size={25}
-    //                   onClick={() => setVisible(true)}
-    //                 />
-    //               )}
-    //             </div>
-    //             {errors.password && (
-    //               <p className="text-red-500 text-xs mt-1">{errors.password}</p>
-    //             )}
-    //           </div>
-    //           <div>
-    //             <Label
-    //               htmlFor="phoneCountryCode"
-    //               className="block text-sm font-medium text-gray-700"
-    //             >
-    //               Phone Number
-    //             </Label>
-    //             <div className="mt-1 flex space-x-2">
-    //               <Input
-    //                 type="text"
-    //                 name="phone.countryCode"
-    //                 placeholder="+1"
-    //                 value={formData.phone.countryCode}
-    //                 onChange={handleInputChange}
-    //                 className="appearance-none w-1/4 px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-    //               />
-    //               <Input
-    //                 type="text"
-    //                 name="phone.number"
-    //                 placeholder="1234567890"
-    //                 value={formData.phone.number}
-    //                 onChange={handleInputChange}
-    //                 className="appearance-none w-3/4 px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-    //               />
-    //             </div>
-    //             {errors.countryCode && (
-    //               <p className="text-red-500 text-xs mt-1">
-    //                 {errors.countryCode}
-    //               </p>
-    //             )}
-    //             {errors.number && (
-    //               <p className="text-red-500 text-xs mt-1">{errors.number}</p>
-    //             )}
-    //           </div>
-    //           <div>
-    //             <Label
-    //               htmlFor="avatar"
-    //               className="block text-sm font-medium text-gray-700"
-    //             >
-    //               Avatar
-    //             </Label>
-    //             <div className="mt-2 flex items-center">
-    //               <span className="inline-block h-8 w-8 rounded-full overflow-hidden">
-    //                 {avatarPreview ? (
-    //                   <img
-    //                     src={avatarPreview}
-    //                     alt="Avatar"
-    //                     className="h-full w-full object-cover rounded-full"
-    //                   />
-    //                 ) : (
-    //                   <RxAvatar className="h-8 w-8" />
-    //                 )}
-    //               </span>
-    //               <Label
-    //                 htmlFor="file-input"
-    //                 className="ml-5 flex items-center justify-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 cursor-pointer"
-    //               >
-    //                 <span>Upload a file</span>
-    //                 <Input
-    //                   type="file"
-    //                   name="avatar"
-    //                   id="file-input"
-    //                   accept="image/jpeg,image/png"
-    //                   onChange={handleFileInputChange}
-    //                   className="sr-only"
-    //                 />
-    //               </Label>
-    //             </div>
-    //             {errors.avatar && (
-    //               <p className="text-red-500 text-xs mt-1">{errors.avatar}</p>
-    //             )}
-    //           </div>
-    //           <div>
-    //             <button
-    //               type="submit"
-    //               disabled={isLoading}
-    //               className={`group relative w-full h-[40px] flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white ${
-    //                 isLoading ? "bg-blue-400" : "bg-blue-600 hover:bg-blue-700"
-    //               }`}
-    //             >
-    //               {isLoading ? "Submitting..." : "Submit"}
-    //             </button>
-    //           </div>
-    //           <div className={`${styles.normalFlex} w-full`}>
-    //             <h4>Already have an account?</h4>
-    //             <Link href="/login" className="text-blue-600 pl-2">
-    //               Sign In
-    //             </Link>
-    //           </div>
-    //         </form>
-    //       ) : (
-    //         <form className="space-y-6" onSubmit={handleOtpSubmit}>
-    //           <div>
-    //             <Label
-    //               htmlFor="otp"
-    //               className="block text-sm font-medium text-gray-700"
-    //             >
-    //               Enter OTP
-    //             </Label>
-    //             <div className="mt-1">
-    //               <Input
-    //                 type="text"
-    //                 name="otp"
-    //                 required
-    //                 value={otp}
-    //                 onChange={(e) => setOtp(e.target.value)}
-    //                 placeholder="Enter 6-digit OTP"
-    //                 className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-    //               />
-    //             </div>
-    //           </div>
-    //           <div>
-    //             <button
-    //               type="submit"
-    //               disabled={isLoading}
-    //               className={`group relative w-full h-[40px] flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white ${
-    //                 isLoading ? "bg-blue-400" : "bg-blue-600 hover:bg-blue-700"
-    //               }`}
-    //             >
-    //               {isLoading ? "Verifying..." : "Verify OTP"}
-    //             </button>
-    //           </div>
-    //           <div className="text-center">
-    //             <button
-    //               type="button"
-    //               onClick={handleResendOtp}
-    //               disabled={isLoading}
-    //               className={`text-sm text-blue-600 hover:text-blue-800 ${
-    //                 isLoading ? "opacity-50 cursor-not-allowed" : ""
-    //               }`}
-    //             >
-    //               {isLoading ? "Sending..." : "Resend OTP"}
-    //             </button>
-    //           </div>
-    //         </form>
-    //       )}
-    //     </div>
-    //   </div>
-    // </div>
-
-    <Card className="w-full lg:max-w-lg mx-auto shadow-elegant py-3">
-      <CardHeader className="text-center py-2">
-        <CardTitle className={`${inter.className} py-0 text-2xl text-black`}>
-          {showOtpInput ? "Verify Your Account" : "Register as a new user"}
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="flex flex-col items-center space-y-2">
-            <Avatar className="w-16 h-16">
-              <AvatarImage src={avatarPreview || undefined} />
-              <AvatarFallback>
-                <User className="w-8 h-8" />
-              </AvatarFallback>
-            </Avatar>
-            <Label htmlFor="avatar" className="cursor-pointer">
-              <div className="flex items-center space-x-2 text-sm text-primary hover:text-primary/80 transition-colors">
-                <Upload className="w-4 h-4" />
-                <span>Upload Avatar</span>
-              </div>
-              <Input
-                type="file"
-                name="avatar"
-                id="file-input"
-                accept="image/jpeg,image/png"
-                onChange={handleFileInputChange}
-                className="sr-only hidden"
-              />
-            </Label>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1">
-              <Label htmlFor="firstName">First Name</Label>
-              <Input
-                id="firstName"
-                placeholder="John"
-                value={formData.fullname.firstName}
-                // onChange={(e) => handleInputChange('fullname.firstName', e.target.value)}
-                onChange={handleInputChange}
-                className={errors.firstName ? "border-destructive" : ""}
-              />
-              {errors.firstName && (
-                <p className="text-xs text-destructive">{errors.firstName}</p>
-              )}
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="lastName">Last Name</Label>
-              <Input
-                id="lastName"
-                placeholder="Doe"
-                value={formData.fullname.lastName}
-                onChange={handleInputChange}
-                // onChange={(e) => handleInputChange('fullname.lastName', e.target.value)}
-                className={errors.lastName ? "border-destructive" : ""}
-              />
-              {errors.lastName && (
-                <p className="text-xs text-destructive">{errors.lastName}</p>
-              )}
-            </div>
-          </div>
-
-          {/* Middle Name */}
-          <div className="space-y-1">
-            <Label htmlFor="middleName">Middle Name (Optional)</Label>
-            <Input
-              id="middleName"
-              placeholder="Middle name"
-              value={formData.fullname.middleName}
-              onChange={handleInputChange}
-              // onChange={(e) => handleInputChange('fullname.middleName', e.target.value)}
-            />
-          </div>
-
-          <div className="space-y-1">
-            <Label htmlFor="username">Username</Label>
-            <Input
-              id="username"
-              placeholder="johndoe"
-              value={formData.username}
-              // onChange={(e) => handleInputChange('username', e.target.value)}
-              onChange={handleInputChange}
-              className={errors.username ? "border-destructive" : ""}
-            />
-            {errors.username && (
-              <p className="text-xs text-destructive">{errors.username}</p>
-            )}
-          </div>
-
-          {/* Email */}
-          <div className="space-y-1">
-            <Label htmlFor="email">Email address</Label>
-            <Input
-              id="email"
-              type="email"
-              placeholder="john@example.com"
-              value={formData.email}
-              // onChange={(e) => handleInputChange('email', e.target.value)}
-               onChange={handleInputChange}
-              className={errors.email ? "border-destructive" : ""}
-            />
-            {errors.email && (
-              <p className="text-xs text-destructive">{errors.email}</p>
-            )}
-          </div>
-
-          {/* Password */}
-          <div className="space-y-1">
-            <Label htmlFor="password">Password</Label>
-            <div className="relative">
-              <Input
-                id="password"
-                type={visible ? "text" : "password"}
-                placeholder="Create a secure password"
-                value={formData.password}
-                // onChange={(e) => handleInputChange('password', e.target.value)}
-                 onChange={handleInputChange}
-                className={`pr-10 ${errors.password ? "border-destructive" : ""}`}
-              />
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                onClick={() => setVisible(!showPassword)}
+    <>
+      {isLoading && (
+        <div className="z-50 fixed inset-0 bg-black/60 social-loader min-h-screen grid place-content-center">
+          <svg viewBox="25 25 50 50">
+            <circle r="20" cy="50" cx="50"></circle>
+          </svg>
+        </div>
+      )}
+      <div className="bg-gray-50 min-h-screen flex justify-between">
+        <Card className="border-none shadow-none border-2 border-black sm:min-w-lg mx-auto h-full">
+          <CardHeader className="text-center p-0">
+            <motion.div
+              key={showOtpInput ? "otp-title" : "signup-title"}
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              transition={{ duration: 0.3 }}
+            >
+              <CardTitle className={`${inter.className} text-xl text-black`}>
+                {showOtpInput ? `Verify Your Account for ${formData?.email}` : "Register as a new user"}
+              </CardTitle>
+            </motion.div>
+          </CardHeader>
+          <AnimatePresence mode="wait" custom={showOtpInput}>
+            {!showOtpInput ? (
+              <motion.div
+                key="signup-form"
+                custom={false}
+                initial={{ x: "100%", opacity: 0 }}
+                animate={{ x: 0, opacity: 1 }}
+                exit={{ x: "-100%", opacity: 0 }}
+                transition={{
+                  type: "spring",
+                  stiffness: 300,
+                  damping: 30,
+                  duration: 0.5
+                }}
+                className="w-full"
               >
-                {visible ? (
-                  <EyeOff className="h-4 w-4" />
-                ) : (
-                  <Eye className="h-4 w-4" />
-                )}
-              </Button>
-            </div>
-            {errors.password && (
-              <p className="text-xs text-destructive">{errors.password}</p>
-            )}
-          </div>
-
-          {/* Phone Number */}
-          <div className="space-y-1">
-            <Label htmlFor="phoneCountryCode">Phone Number</Label>
-            <div className="flex space-x-2">
-              <Input
-                placeholder="+1"
-                value={formData.phone.countryCode}
-                // onChange={(e) => handleInputChange('phone.countryCode', e.target.value)}
-                 onChange={handleInputChange}
-                className={`w-20 ${errors.countryCode ? "border-destructive" : ""}`}
-              />
-              <Input
-                placeholder="1234567890"
-                value={formData.phone.number}
-                // onChange={(e) => handleInputChange('phone.number', e.target.value)}
-                 onChange={handleInputChange}
-                className={`flex-1 ${errors.phoneNumber ? "border-destructive" : ""}`}
-              />
-            </div>
-            {(errors.countryCode || errors.phoneNumber) && (
-              <p className="text-xs text-destructive">
-                {errors.countryCode || errors.phoneNumber}
-              </p>
-            )}
-          </div>
-
-          <Button
-            type="submit"
-            className="w-full"
-            disabled={isLoading}
-          >
-            {isLoading ? "Creating Account..." : "Create Account"}
-          </Button>
-
-          <div className="text-center text-sm">
-            <span className="text-muted-foreground">Already have an account? </span>
-            <Link href="/login" className="text-primary hover:text-primary/80 font-medium">
-              Sign In
-            </Link>
-          </div>
-        </form>
-      </CardContent>
-    </Card>
+                <CardContent className="py-0">
+                  <div className="bg-white px-4 sm:rounded-lg sm:px-5">
+                    <form onSubmit={handleSubmit} className="space-y-3">
+                      <div className="flex flex-col items-center">
+                        <Avatar className="w-14 h-14">
+                          <AvatarImage src={avatarPreview || undefined} />
+                          <AvatarFallback>
+                            <User className="w-8 h-8" />
+                          </AvatarFallback>
+                        </Avatar>
+                        <Label htmlFor="avatar" className="cursor-pointer">
+                          <div className="flex items-center space-x-2 text-sm text-primary hover:text-primary/80 transition-colors">
+                            <Upload className="w-4 h-4" />
+                            <span>Upload Avatar</span>
+                          </div>
+                          <Input
+                            type="file"
+                            name="avatar"
+                            id="file-input"
+                            accept="image/jpeg,image/png"
+                            onChange={handleFileInputChange}
+                            className="sr-only hidden"
+                          />
+                        </Label>
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-1">
+                          <Label htmlFor="firstName">First Name</Label>
+                          <Input
+                            id="firstName"
+                            name="fullname.firstName"
+                            placeholder="John"
+                            value={formData.fullname.firstName}
+                            // onChange={(e) => handleInputChange('fullname.firstName', e.target.value)}
+                            onChange={handleInputChange}
+                            className={errors.firstName ? "border-destructive" : ""}
+                          />
+                          {errors.firstName && (
+                            <p className="text-xs text-destructive">{errors.firstName}</p>
+                          )}
+                        </div>
+                        <div className="space-y-1">
+                          <Label htmlFor="lastName">Last Name</Label>
+                          <Input
+                            id="lastName"
+                            name="fullname.lastName"
+                            placeholder="Doe"
+                            value={formData.fullname.lastName}
+                            onChange={handleInputChange}
+                            // onChange={(e) => handleInputChange('fullname.lastName', e.target.value)}
+                            className={errors.lastName ? "border-destructive" : ""}
+                          />
+                          {errors.lastName && (
+                            <p className="text-xs text-destructive">{errors.lastName}</p>
+                          )}
+                        </div>
+                      </div>
+                      {/* Middle Name */}
+                      <div className="space-y-1">
+                        <Label htmlFor="middleName">Middle Name (Optional)</Label>
+                        <Input
+                          id="middleName"
+                          name="fullname.middleName"
+                          placeholder="Middle name"
+                          value={formData.fullname.middleName}
+                          onChange={handleInputChange}
+                        // onChange={(e) => handleInputChange('fullname.middleName', e.target.value)}
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label htmlFor="username">Username</Label>
+                        <Input
+                          id="username"
+                          name="username"
+                          placeholder="johndoe"
+                          value={formData.username}
+                          // onChange={(e) => handleInputChange('username', e.target.value)}
+                          onChange={handleInputChange}
+                          className={errors.username ? "border-destructive" : ""}
+                        />
+                        {errors.username && (
+                          <p className="text-xs text-destructive">{errors.username}</p>
+                        )}
+                      </div>
+                      {/* Email */}
+                      <div className="space-y-1">
+                        <Label htmlFor="email">Email address</Label>
+                        <Input
+                          id="email"
+                          name="email"
+                          type="email"
+                          placeholder="john@example.com"
+                          value={formData.email}
+                          // onChange={(e) => handleInputChange('email', e.target.value)}
+                          onChange={handleInputChange}
+                          className={errors.email ? "border-destructive" : ""}
+                        />
+                        {errors.email && (
+                          <p className="text-xs text-destructive">{errors.email}</p>
+                        )}
+                      </div>
+                      {/* Password */}
+                      <div className="space-y-1">
+                        <Label htmlFor="password">Password</Label>
+                        <div className="relative">
+                          <PasswordInput
+                            id="password"
+                            name="password"
+                            placeholder="Create a secure password"
+                            value={formData.password}
+                            onChange={handleInputChange}
+                            className={`pr-10 ${errors.password ? "border-destructive" : ""}`}
+                          />
+                        </div>
+                        {errors.password && (
+                          <p className="text-xs text-destructive">{errors.password}</p>
+                        )}
+                      </div>
+                      {/* Phone Number */}
+                      <div className="space-y-1">
+                        <Label htmlFor="phoneCountryCode">Phone Number</Label>
+                        <PhoneField
+                          onDotNotationChange={handleInputChange}
+                          countryCode={formData.phone.countryCode}
+                          number={formData.phone.number}
+                          errorCountryCode={errors.countryCode}
+                          errorNumber={errors.phoneNumber}
+                        />
+                        {(errors.countryCode || errors.phoneNumber) && (
+                          <p className="text-xs text-destructive">
+                            {errors.countryCode || errors.phoneNumber}
+                          </p>
+                        )}
+                      </div>
+                      <Button
+                        type="submit"
+                        className="w-full"
+                        disabled={isLoading}
+                      >
+                        {isLoading ? "Creating Account..." : "Create Account"}
+                      </Button>
+                      <div className="text-center text-sm">
+                        <span className="text-muted-foreground">Already have an account? </span>
+                        <Link href="/login" className="text-primary hover:text-primary/80 font-medium">
+                          Sign In
+                        </Link>
+                      </div>
+                    </form>
+                  </div>
+                </CardContent>
+              </motion.div>
+            )
+              :
+              (
+                <motion.div
+                  key="otp-form"
+                  custom={true}
+                  initial={{ x: "100%", opacity: 0 }}
+                  animate={{ x: 0, opacity: 1 }}
+                  exit={{ x: "-100%", opacity: 0 }}
+                  transition={{
+                    type: "spring",
+                    stiffness: 300,
+                    damping: 30,
+                    duration: 0.5
+                  }}
+                  className=""
+                >
+                  <CardContent>
+                    <div className="bg-white py-4 px-4 sm:rounded-lg sm:px-5 min-h-[70vh] flex items-center justify-center">
+                      <form className="space-y-4 min-w-lg" onSubmit={handleOtpSubmit}>
+                        <div>
+                          <Label
+                            htmlFor="otp"
+                            className="block text-sm font-medium text-gray-700"
+                          >
+                            Enter OTP
+                          </Label>
+                          <div className="mt-1">
+                            <Input
+                              type="text"
+                              name="otp"
+                              required
+                              value={otp}
+                              onChange={(e) => setOtp(e.target.value)}
+                              placeholder="Enter 6-digit OTP"
+                              className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                            />
+                          </div>
+                        </div>
+                        <div>
+                          <button
+                            type="submit"
+                            disabled={isLoading}
+                            className={`group relative w-full h-[40px] flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white ${isLoading ? "bg-blue-400" : "bg-blue-600 hover:bg-blue-700"
+                              }`}
+                          >
+                            {isLoading ? "Verifying..." : "Verify OTP"}
+                          </button>
+                        </div>
+                        <div className="text-center">
+                          <button
+                            type="button"
+                            onClick={handleResendOtp}
+                            disabled={isLoading}
+                            className={`text-sm text-blue-600 hover:text-blue-800 ${isLoading ? "opacity-50 cursor-not-allowed" : ""
+                              }`}
+                          >
+                            {isLoading ? "Sending..." : "Resend OTP"}
+                          </button>
+                        </div>
+                      </form>
+                    </div>
+                  </CardContent>
+                </motion.div>
+              )
+            }
+          </AnimatePresence>
+        </Card>
+      </div>
+    </>
   );
 };
 
 export default Signup;
+
+
+// <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+//   <div className="sm:mx-auto sm:w-full sm:max-w-md">
+//     <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
+//       {showOtpInput ? "Verify Your Account" : "Register as a new user"}
+//     </h2>
+//   </div>
+//   <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
+//     <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
+//       {!showOtpInput ? (
+//         <form className="space-y-6" onSubmit={handleSubmit}>
+//           <div>
+//             <Label
+//               htmlFor="firstName"
+//               className="block text-sm font-medium text-gray-700"
+//             >
+//               First Name
+//             </Label>
+//             <Input
+//               type="text"
+//               name="fullname.firstName"
+//               autoComplete="given-name"
+//               required
+//               value={formData.fullname.firstName}
+//               onChange={handleInputChange}
+//               className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+//             />
+//             {errors.firstName && (
+//               <p className="text-red-500 text-xs mt-1">
+//                 {errors.firstName}
+//               </p>
+//             )}
+//           </div>
+//           <div>
+//             <Label
+//               htmlFor="lastName"
+//               className="block text-sm font-medium text-gray-700"
+//             >
+//               Last Name
+//             </Label>
+//             <Input
+//               type="text"
+//               name="fullname.lastName"
+//               autoComplete="family-name"
+//               required
+//               value={formData.fullname.lastName}
+//               onChange={handleInputChange}
+//               className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+//             />
+//             {errors.lastName && (
+//               <p className="text-red-500 text-xs mt-1">{errors.lastName}</p>
+//             )}
+//           </div>
+//           <div>
+//             <Label
+//               htmlFor="middleName"
+//               className="block text-sm font-medium text-gray-700"
+//             >
+//               Middle Name (Optional)
+//             </Label>
+//             <Input
+//               type="text"
+//               name="fullname.middleName"
+//               value={formData.fullname.middleName}
+//               onChange={handleInputChange}
+//               className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+//             />
+//           </div>
+//           <div>
+//             <Label
+//               htmlFor="username"
+//               className="block text-sm font-medium text-gray-700"
+//             >
+//               Username
+//             </Label>
+//             <Input
+//               type="text"
+//               name="username"
+//               autoComplete="username"
+//               required
+//               value={formData.username}
+//               onChange={handleInputChange}
+//               className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+//             />
+//             {errors.username && (
+//               <p className="text-red-500 text-xs mt-1">{errors.username}</p>
+//             )}
+//           </div>
+//           <div>
+//             <Label
+//               htmlFor="email"
+//               className="block text-sm font-medium text-gray-700"
+//             >
+//               Email address
+//             </Label>
+//             <Input
+//               type="email"
+//               name="email"
+//               autoComplete="email"
+//               required
+//               value={formData.email}
+//               onChange={handleInputChange}
+//               className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+//             />
+//             {errors.email && (
+//               <p className="text-red-500 text-xs mt-1">{errors.email}</p>
+//             )}
+//           </div>
+//           <div>
+//             <Label
+//               htmlFor="password"
+//               className="block text-sm font-medium text-gray-700"
+//             >
+//               Password
+//             </Label>
+//             <div className="mt-1 relative">
+//               <Input
+//                 type={visible ? "text" : "password"}
+//                 name="password"
+//                 autoComplete="new-password"
+//                 required
+//                 value={formData.password}
+//                 onChange={handleInputChange}
+//                 className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+//               />
+//               {visible ? (
+//                 <AiOutlineEye
+//                   className="absolute right-2 top-2 cursor-pointer"
+//                   size={25}
+//                   onClick={() => setVisible(false)}
+//                 />
+//               ) : (
+//                 <AiOutlineEyeInvisible
+//                   className="absolute right-2 top-2 cursor-pointer"
+//                   size={25}
+//                   onClick={() => setVisible(true)}
+//                 />
+//               )}
+//             </div>
+//             {errors.password && (
+//               <p className="text-red-500 text-xs mt-1">{errors.password}</p>
+//             )}
+//           </div>
+//           <div>
+//             <Label
+//               htmlFor="phoneCountryCode"
+//               className="block text-sm font-medium text-gray-700"
+//             >
+//               Phone Number
+//             </Label>
+//             <div className="mt-1 flex space-x-2">
+//               <Input
+//                 type="text"
+//                 name="phone.countryCode"
+//                 placeholder="+1"
+//                 value={formData.phone.countryCode}
+//                 onChange={handleInputChange}
+//                 className="appearance-none w-1/4 px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+//               />
+//               <Input
+//                 type="text"
+//                 name="phone.number"
+//                 placeholder="1234567890"
+//                 value={formData.phone.number}
+//                 onChange={handleInputChange}
+//                 className="appearance-none w-3/4 px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+//               />
+//             </div>
+//             {errors.countryCode && (
+//               <p className="text-red-500 text-xs mt-1">
+//                 {errors.countryCode}
+//               </p>
+//             )}
+//             {errors.number && (
+//               <p className="text-red-500 text-xs mt-1">{errors.number}</p>
+//             )}
+//           </div>
+//           <div>
+//             <Label
+//               htmlFor="avatar"
+//               className="block text-sm font-medium text-gray-700"
+//             >
+//               Avatar
+//             </Label>
+//             <div className="mt-2 flex items-center">
+//               <span className="inline-block h-8 w-8 rounded-full overflow-hidden">
+//                 {avatarPreview ? (
+//                   <img
+//                     src={avatarPreview}
+//                     alt="Avatar"
+//                     className="h-full w-full object-cover rounded-full"
+//                   />
+//                 ) : (
+//                   <RxAvatar className="h-8 w-8" />
+//                 )}
+//               </span>
+//               <Label
+//                 htmlFor="file-input"
+//                 className="ml-5 flex items-center justify-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 cursor-pointer"
+//               >
+//                 <span>Upload a file</span>
+//                 <Input
+//                   type="file"
+//                   name="avatar"
+//                   id="file-input"
+//                   accept="image/jpeg,image/png"
+//                   onChange={handleFileInputChange}
+//                   className="sr-only"
+//                 />
+//               </Label>
+//             </div>
+//             {errors.avatar && (
+//               <p className="text-red-500 text-xs mt-1">{errors.avatar}</p>
+//             )}
+//           </div>
+//           <div>
+//             <button
+//               type="submit"
+//               disabled={isLoading}
+//               className={`group relative w-full h-[40px] flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white ${
+//                 isLoading ? "bg-blue-400" : "bg-blue-600 hover:bg-blue-700"
+//               }`}
+//             >
+//               {isLoading ? "Submitting..." : "Submit"}
+//             </button>
+//           </div>
+//           <div className={`${styles.normalFlex} w-full`}>
+//             <h4>Already have an account?</h4>
+//             <Link href="/login" className="text-blue-600 pl-2">
+//               Sign In
+//             </Link>
+//           </div>
+//         </form>
+//       ) : (
+//         <form className="space-y-6" onSubmit={handleOtpSubmit}>
+//           <div>
+//             <Label
+//               htmlFor="otp"
+//               className="block text-sm font-medium text-gray-700"
+//             >
+//               Enter OTP
+//             </Label>
+//             <div className="mt-1">
+//               <Input
+//                 type="text"
+//                 name="otp"
+//                 required
+//                 value={otp}
+//                 onChange={(e) => setOtp(e.target.value)}
+//                 placeholder="Enter 6-digit OTP"
+//                 className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+//               />
+//             </div>
+//           </div>
+//           <div>
+//             <button
+//               type="submit"
+//               disabled={isLoading}
+//               className={`group relative w-full h-[40px] flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white ${
+//                 isLoading ? "bg-blue-400" : "bg-blue-600 hover:bg-blue-700"
+//               }`}
+//             >
+//               {isLoading ? "Verifying..." : "Verify OTP"}
+//             </button>
+//           </div>
+//           <div className="text-center">
+//             <button
+//               type="button"
+//               onClick={handleResendOtp}
+//               disabled={isLoading}
+//               className={`text-sm text-blue-600 hover:text-blue-800 ${
+//                 isLoading ? "opacity-50 cursor-not-allowed" : ""
+//               }`}
+//             >
+//               {isLoading ? "Sending..." : "Resend OTP"}
+//             </button>
+//           </div>
+//         </form>
+//       )}
+//     </div>
+//   </div>
+// </div>

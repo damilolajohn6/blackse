@@ -10,28 +10,35 @@ const useAuthStore = create(
   persist(
     (set, get) => ({
       user: null,
+      // token: localStorage?.getItem("token") || null,
       token: null,
       isAuthenticated: false,
       isLoading: false,
 
       // User signup
       signup: async (userData) => {
+        console.log("data", userData)
         set({ isLoading: true });
         try {
           const formData = new FormData();
-          formData.append("fullname", userData.fullname);
+          formData.append(
+            "fullname",
+            JSON.stringify(userData.fullname)
+          );
           formData.append("username", userData.username);
           formData.append("email", userData.email);
           formData.append("password", userData.password);
+          // formData.append(
+          //   "phoneNumber",
+          //   JSON.stringify(userData.phone)
+          // );
           if (userData.phone) {
-            formData.append("phone", userData.phone);
+            formData.append("phoneNumber", JSON.stringify(userData.phone));
           }
           if (userData.avatar) {
-            // Assuming avatar is a File object
             formData.append("avatar", userData.avatar);
           }
           formData.append("role", userData.role || "user");
-
           console.debug("Signup FormData:", Object.fromEntries(formData));
 
           const res = await axios.post(
@@ -44,6 +51,7 @@ const useAuthStore = create(
           );
 
           toast.success(res.data.message);
+
           return { success: true, email: userData.email };
         } catch (error) {
           console.error("Signup error:", error.message, error.response?.data);

@@ -2,6 +2,8 @@ import { Poppins } from "next/font/google";
 import "./globals.css";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import AuthDebugger from "@/utils/authDebugger";
+
 
 const poppins = Poppins(
   { 
@@ -18,8 +20,9 @@ export const metadata = {
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
-      <body className={`${poppins.className}`} suppressHydrationWarning={true}>
-        {children}
+      <body className={`${poppins.className}`} suppressHydrationWarning={true}>     
+          {children}
+        {/* {process.env.NODE_ENV === 'development' && <AuthDebugger />} */}
         <ToastContainer
           position="top-right"
           autoClose={3000}

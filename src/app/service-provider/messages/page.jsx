@@ -16,19 +16,40 @@ import DashboardLayout from "@/components/serviceProvider/Layout/DashboardLayout
 import useServiceProviderStore from "@/store/serviceStore";
 import { toast } from "react-toastify";
 import { Input } from "@/components/ui/input";
+import { Jost } from "next/font/google";
+
+// Import your improved API functions
+import { 
+  fetchConversations, 
+  fetchMessages as fetchMessagesAPI, 
+  sendMessage as sendMessageAPI 
+} from "@/lib/proxyApiCall";
+
+const jost = Jost(
+  { 
+    subsets: ["latin"], 
+    weight: ["100", "200", "300", "400", "500", "600", "700", "800"]
+  }, 
+);
 
 const Messages = () => {
   const {
     conversations,
     messages,
     selectedConversation,
-    fetchConversations,
-    fetchMessages,
-    sendMessage,
-    markMessageAsRead,
     isLoading,
     error,
     serviceProvider,
+    // Remove these from destructuring since we'll use API functions directly
+    // fetchConversations,
+    // fetchMessages,
+    // sendMessage,
+    // But keep these for local state management
+    setConversations,
+    setMessages,
+    addMessage,
+    setLoading,
+    setError,
   } = useServiceProviderStore();
 
   const [selectedUserId, setSelectedUserId] = useState(null);
@@ -39,7 +60,6 @@ const Messages = () => {
   const [mounted, setMounted] = useState(false);
   const messagesEndRef = useRef(null);
 
-  // Handle client-side mounting to prevent hydration issues
   useEffect(() => {
     setMounted(true);
   }, []);
@@ -53,49 +73,31 @@ const Messages = () => {
     scrollToBottom();
   }, [messages, selectedUserId]);
 
-  // Debug logging
-  useEffect(() => {
-    if (mounted) {
-      console.log("Messages component state:", {
-        conversations: conversations?.length || 0,
-        conversationData: conversations,
-        selectedUserId,
-        currentMessages: selectedUserId
-          ? messages[selectedUserId]?.length || 0
-          : 0,
-        messagesData: messages,
-        isLoading,
-        error,
-        serviceProvider: serviceProvider?._id,
-      });
-    }
-  }, [
-    conversations,
-    selectedUserId,
-    messages,
-    isLoading,
-    error,
-    serviceProvider,
-    mounted,
-  ]);
-
   // Fetch conversations on component mount
   useEffect(() => {
     const loadConversations = async () => {
       if (!mounted || !serviceProvider?._id) return;
+      
       try {
         console.log("Fetching conversations...");
-        // Use the correct endpoint from your backend
+        setLoading(true);
+        setError(null);
+        
+        // Use the proxy API function
         await fetchConversations({
           page: 1,
           limit: 20,
           search: "",
           archived: false,
         });
+        
         console.log("Conversations fetched successfully");
       } catch (error) {
         console.error("Error fetching conversations:", error);
+        setError(`Failed to load conversations: ${error.message}`);
         toast.error("Failed to load conversations: " + error.message);
+      } finally {
+        setLoading(false);
       }
     };
 
@@ -103,9 +105,8 @@ const Messages = () => {
       loadConversations();
     } else if (mounted) {
       console.warn("No serviceProvider ID available");
-      // Don't show error toast immediately, user might still be loading
     }
-  }, [fetchConversations, serviceProvider, mounted]);
+  }, [serviceProvider, mounted, setLoading, setError]);
 
   // Fetch messages when a user is selected
   useEffect(() => {
@@ -115,7 +116,13 @@ const Messages = () => {
       setIsMessagesLoading(true);
       try {
         console.log("Fetching messages for user:", selectedUserId);
-        await fetchMessages(selectedUserId);
+        
+        // Use the proxy API function
+        await fetchMessagesAPI(selectedUserId, {
+          page: 1,
+          limit: 50,
+        });
+        
         console.log("Messages fetched successfully for user:", selectedUserId);
       } catch (error) {
         console.error("Error fetching messages:", error);
@@ -126,7 +133,7 @@ const Messages = () => {
     };
 
     loadMessages();
-  }, [selectedUserId, fetchMessages, mounted]);
+  }, [selectedUserId, mounted]);
 
   const handleSendMessage = async (e) => {
     e.preventDefault();
@@ -137,7 +144,13 @@ const Messages = () => {
 
     try {
       console.log("Sending message:", { selectedUserId, content: messageText });
-      await sendMessage(selectedUserId, { content: messageText });
+      
+      // Use the proxy API function with optimistic updates
+      await sendMessageAPI(selectedUserId, { 
+        content: messageText,
+        type: 'text'
+      });
+      
       setMessageText("");
       toast.success("Message sent successfully");
     } catch (error) {
@@ -152,6 +165,24 @@ const Messages = () => {
     setShowConversationMenu(null);
   };
 
+  const handleRetryConversations = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      await fetchConversations({
+        page: 1,
+        limit: 20,
+        search: "",
+        archived: false,
+      });
+    } catch (error) {
+      setError(`Failed to load conversations: ${error.message}`);
+      toast.error("Failed to load conversations: " + error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Helper function to get other user from conversation
   const getOtherUserFromConversation = (conversation) => {
     if (!conversation.members || !Array.isArray(conversation.members)) {
@@ -159,7 +190,6 @@ const Messages = () => {
       return null;
     }
 
-    // Handle case where members array has proper user objects
     const otherUser = conversation.members.find((member) => {
       const memberId = member._id || member;
       return (
@@ -236,13 +266,14 @@ const Messages = () => {
         <div className="h-[calc(100vh-8rem)] bg-white rounded-xl shadow-sm border border-gray-200 flex items-center justify-center">
           <div className="text-center">
             <p className="text-red-500 mb-4">
-              Error loading conversations: {error}
+              Error: {error}
             </p>
             <button
-              onClick={() => fetchConversations()}
-              className="px-4 py-2 bg-indigo-500 text-white rounded-lg hover:bg-indigo-600"
+              onClick={handleRetryConversations}
+              disabled={isLoading}
+              className="px-4 py-2 bg-indigo-500 text-white rounded-lg hover:bg-indigo-600 disabled:opacity-50"
             >
-              Retry
+              {isLoading ? "Retrying..." : "Retry"}
             </button>
           </div>
         </div>
@@ -277,9 +308,19 @@ const Messages = () => {
               <div className="p-4 text-center text-gray-500">
                 <p>No conversations found</p>
                 {conversations.length === 0 && (
-                  <p className="text-sm mt-2">
-                    Start messaging users to see conversations here
-                  </p>
+                  <div className="mt-4">
+                    <p className={"text-sm " + jost.className}>
+                      Start messaging users to see conversations here
+                    </p>
+                    {error && (
+                      <button
+                        onClick={handleRetryConversations}
+                        className="mt-2 px-3 py-1 text-xs bg-indigo-500 text-white rounded hover:bg-indigo-600"
+                      >
+                        Retry Loading
+                      </button>
+                    )}
+                  </div>
                 )}
                 {searchTerm && conversations.length > 0 && (
                   <p className="text-sm mt-2">
@@ -301,7 +342,6 @@ const Messages = () => {
                   otherUser.email ||
                   "Unknown User";
 
-                // Handle avatar URL with fallback
                 const avatarUrl =
                   otherUser.avatar?.url || "/api/placeholder/40/40";
 
@@ -309,11 +349,10 @@ const Messages = () => {
                   <div
                     key={conversation._id}
                     onClick={() => handleSelectConversation(otherUser._id)}
-                    className={`p-4 border-b border-gray-100 cursor-pointer hover:bg-gray-50 transition-colors ${
-                      isSelected
-                        ? "bg-indigo-50 border-r-2 border-r-indigo-500"
-                        : ""
-                    }`}
+                    className={`p-4 border-b border-gray-100 cursor-pointer hover:bg-gray-50 transition-colors ${isSelected
+                      ? "bg-indigo-50 border-r-2 border-r-indigo-500"
+                      : ""
+                      }`}
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-3">
@@ -326,7 +365,6 @@ const Messages = () => {
                               e.target.src = "/api/placeholder/40/40";
                             }}
                           />
-                          {/* Online indicator - you can add online status logic here */}
                           <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-white"></div>
                         </div>
                         <div className="flex-1 min-w-0">
@@ -344,14 +382,14 @@ const Messages = () => {
                         <span className="text-xs text-gray-400">
                           {conversation.updatedAt
                             ? new Date(conversation.updatedAt).toLocaleString(
-                                [],
-                                {
-                                  month: "short",
-                                  day: "numeric",
-                                  hour: "2-digit",
-                                  minute: "2-digit",
-                                }
-                              )
+                              [],
+                              {
+                                month: "short",
+                                day: "numeric",
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              }
+                            )
                             : ""}
                         </span>
                         {conversation.unreadCount > 0 && (
@@ -455,23 +493,21 @@ const Messages = () => {
                       const showAvatar =
                         index === 0 ||
                         currentMessages[index - 1]?.senderModel !==
-                          message.senderModel;
+                        message.senderModel;
 
                       return (
                         <div
                           key={message._id}
-                          className={`flex ${
-                            isFromServiceProvider
-                              ? "justify-end"
-                              : "justify-start"
-                          }`}
+                          className={`flex ${isFromServiceProvider
+                            ? "justify-end"
+                            : "justify-start"
+                            }`}
                         >
                           <div
-                            className={`flex items-end space-x-2 max-w-xs lg:max-w-md ${
-                              isFromServiceProvider
-                                ? "flex-row-reverse space-x-reverse"
-                                : ""
-                            }`}
+                            className={`flex items-end space-x-2 max-w-xs lg:max-w-md ${isFromServiceProvider
+                              ? "flex-row-reverse space-x-reverse"
+                              : ""
+                              }`}
                           >
                             {showAvatar && !isFromServiceProvider && (
                               <img
@@ -487,11 +523,10 @@ const Messages = () => {
                               />
                             )}
                             <div
-                              className={`px-4 py-2 rounded-lg ${
-                                isFromServiceProvider
-                                  ? "bg-indigo-500 text-white rounded-br-sm"
-                                  : "bg-gray-200 text-gray-900 rounded-bl-sm"
-                              }`}
+                              className={`px-4 py-2 rounded-lg ${isFromServiceProvider
+                                ? "bg-indigo-500 text-white rounded-br-sm"
+                                : "bg-gray-200 text-gray-900 rounded-bl-sm"
+                                }`}
                             >
                               {message.content && (
                                 <p className="text-sm whitespace-pre-wrap break-words">
@@ -523,11 +558,10 @@ const Messages = () => {
                                 </div>
                               )}
                               <p
-                                className={`text-xs mt-1 ${
-                                  isFromServiceProvider
-                                    ? "text-indigo-100"
-                                    : "text-gray-500"
-                                }`}
+                                className={`text-xs mt-1 ${isFromServiceProvider
+                                  ? "text-indigo-100"
+                                  : "text-gray-500"
+                                  }`}
                               >
                                 {new Date(message.createdAt).toLocaleTimeString(
                                   [],
@@ -599,7 +633,7 @@ const Messages = () => {
                 <h3 className="text-lg font-medium text-gray-900 mb-2">
                   No conversation selected
                 </h3>
-                <p className="text-gray-600">
+                <p className={"text-gray-600 " + jost.className}>
                   Choose a conversation from the sidebar to start messaging
                 </p>
               </div>

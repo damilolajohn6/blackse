@@ -1,11 +1,9 @@
 export const getAuthToken = () => {
   if (typeof window === "undefined") return null;
-
   const token = document.cookie
     .split("; ")
     .find((row) => row.startsWith("service_provider_token="))
     ?.split("=")[1];
-
   return token;
 };
 
@@ -21,18 +19,20 @@ export const isValidEmail = (email) => {
   return emailRegex.test(email);
 };
 
+
 export const isValidPassword = (password) => {
   return password && password.length >= 6;
 };
+
 
 export const isValidPhoneNumber = (phone) => {
   const phoneRegex = /^\d{7,15}$/;
   return phoneRegex.test(phone);
 };
 
+
 export const validateRegistrationData = (data) => {
   const errors = {};
-
   // Name validation
   if (!data.fullname?.firstName?.trim()) {
     errors.firstName = "First name is required";

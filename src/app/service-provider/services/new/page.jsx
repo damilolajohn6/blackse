@@ -19,6 +19,8 @@ import { toast } from "react-toastify";
 import { Poppins, Jost } from "next/font/google";
 import { Button } from "@/components/ui/button";
 
+import { addService } from "@/lib/proxyApiCall";
+
 const poppins = Poppins(
   {
     subsets: ["latin"],
@@ -34,7 +36,7 @@ const jost = Jost(
 
 const NewServicePage = () => {
   const router = useRouter();
-  const { addService, isLoading } = useServiceProviderStore();
+  const { addSer, isLoading } = useServiceProviderStore();
   const [activeTab, setActiveTab] = useState("form");
   const [formData, setFormData] = useState({
     name: "",
@@ -77,8 +79,9 @@ const NewServicePage = () => {
       };
 
       await addService(serviceData);
-      toast.success("Service created successfully!");
-      router.push("/service-provider/services");
+      // await addServices("POST", "/service-provider/add-service-offered", { body: serviceData });
+      // toast.success("Service created successfully!");
+      // router.push("/service-provider/services");
     } catch (error) {
       toast.error(error.message || "Failed to create service");
     }

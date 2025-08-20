@@ -4,14 +4,47 @@ import { devtools, persist } from "zustand/middleware";
 import { immer } from "zustand/middleware/immer";
 import axios from "axios";
 import { toast } from "react-toastify";
+import { addService as apiAddService } from "@/lib/proxyApiCall";
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_SERVER || "http://localhost:8000/api/v2";
 
+// Get token from cookie
+const getTokenFromCookie = () => {
+  if (typeof document === 'undefined') return null;
+
+
+  const cookies = document.cookie.split(';');
+  const tokenCookie = cookies.find(cookie =>
+    cookie.trim().startsWith('service_provider_token=')
+  );
+
+  const token = document.cookie
+    .split("; ")
+    .find((row) => row.startsWith("service_provider_token="))
+    ?.split("=")[1];
+
+  console.log("MY TOKEN", token);
+  return token;
+};
+
 // After successful login, set the cookie
 const setAuthCookie = (token) => {
-  document.cookie = `service_provider_token=${token}; path=/; samesite=None; secure; max-age=86400`;
-  console.log("Set cookie:", document.cookie); // Debug: Log cookie to verify
+  const isProduction = window.location.protocol === 'https:';
+
+  // Add max-age for persistence (7 days = 604800 seconds)
+  const cookieString = isProduction
+    ? `service_provider_token=${token}; path=/; secure; samesite=lax; max-age=604800`
+    : `service_provider_token=${token}; path=/; samesite=lax; max-age=604800`;
+
+  console.log("Setting cookie:", cookieString);
+  document.cookie = cookieString;
+
+  // Verify cookie was set
+  setTimeout(() => {
+    const wasSet = document.cookie.includes('service_provider_token');
+    console.log("Cookie set successfully:", wasSet);
+  }, 100);
 };
 
 // Clear the authentication cookie
@@ -19,8 +52,9 @@ const clearAuthCookie = () => {
   document.cookie = `service_provider_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
 };
 
-// Helper function for API calls
-const apiCall = async (endpoint, options = {}) => {
+// Helper function for API calls - FIXED VERSION
+const apiCall = async (action, endpoint, options = {}) => {
+  console.log(action, endpoint, options);
   const url = `${API_BASE_URL}${endpoint}`;
   const token = options.token || useServiceProviderStore.getState().token;
 
@@ -28,36 +62,48 @@ const apiCall = async (endpoint, options = {}) => {
   console.log("API Call - Token from store:", token);
   console.log("API Call - All cookies:", document.cookie);
 
-  const defaultOptions = {
+  const axiosConfig = {
     headers: {
       "Content-Type": "application/json",
-      Accept: "*/*",
-      Authorization: token ? `Bearer ${token}` : "",
+      Authorization: `Bearer ${token}`,
     },
-    credentials: "include",
-    ...options,
+    withCredentials: true,
+    ...options.axiosConfig,
   };
 
   try {
-    const response = await fetch(url, defaultOptions);
-    const data = await response.json();
+    let response;
+    if (action === "post") {
+      response = await axios.post(url, options.body, axiosConfig);
+    } else if (action === "put") {
+      response = await axios.put(url, options.body, axiosConfig);
+    } else if (action === "delete") {
+      response = await axios.delete(url, axiosConfig);
+    } else {
+      // GET request
+      if (options.body) {
+        axiosConfig.params = options.body;
+      }
 
-    console.log("API Response:", data);
-
-    if (!response.ok) {
-      throw new Error(data.message || "Request failed");
+      console.log("RESPONSE=>", response)
+      response = await axios.get(url, axiosConfig);
     }
 
-    return data;
+    console.log("API Response:", response.data);
+    return response.data;
+
   } catch (error) {
     console.error("API call failed:", error);
-    console.log("error-messageconsole.log();", error.message)
-    // if (error.message.includes("Please login to access this resource")) {
-      // Handle unauthorized error (e.g., redirect to login)
+
+    const errorMessage = error.response?.data?.message || error.message || "Request failed";
+    console.log("error-message:", errorMessage);
+
+    if (error.response?.status === 401) {
       // useServiceProviderStore.getState().logout();
-    //   toast.error("Session expired. Please log in again.");
-    // }
-    throw error;
+      // toast.error("Session expired. Please log in again.");
+    }
+
+    throw new Error(errorMessage);
   }
 };
 
@@ -91,6 +137,7 @@ const useServiceProviderStore = create(
         // ===== AUTHENTICATION STATE =====
         serviceProvider: null,
         token: null,
+        isAuthenticated: false, // Added missing field
         isLoading: false,
         error: null,
 
@@ -134,6 +181,32 @@ const useServiceProviderStore = create(
           limit: 20,
         },
         onlineUsers: new Set(),
+        setConversations: (conversations) =>
+          set((state) => {
+            state.conversations = conversations;
+          }),
+        isLoading: false,
+        error: null,
+
+        // Setters that the API functions will use
+        setConversations: (conversations) => set({ conversations }),
+        setMessages: (conversationId, messages) => set((state) => ({
+          messages: {
+            ...state.messages,
+            [conversationId]: messages,
+          }
+        })),
+        addMessage: (conversationId, message) => set((state) => ({
+          messages: {
+            ...state.messages,
+            [conversationId]: [
+              ...(state.messages[conversationId] || []),
+              message,
+            ],
+          }
+        })),
+        setLoading: (isLoading) => set({ isLoading }),
+        setError: (error) => set({ error }),
 
         // ===== SERVICES STATE =====
         servicesOffered: [],
@@ -193,13 +266,9 @@ const useServiceProviderStore = create(
           });
 
           try {
-            const data = await apiCall(
-              "/service-provider/login-service-provider",
-              {
-                method: "POST",
-                body: JSON.stringify(credentials),
-              }
-            );
+            const data = await apiCall("post", "/service-provider/login-service-provider", {
+              body: credentials,
+            });
 
             setAuthCookie(data.token);
 
@@ -221,6 +290,38 @@ const useServiceProviderStore = create(
           }
         },
 
+        // Enhanced checkAuthStatus method
+        checkAuthStatus: () => {
+          console.log("🔐 Checking authentication status...");
+
+          const state = get();
+          const cookieToken = getTokenFromCookie();
+
+          console.log("🔐 Auth Status Check:");
+          console.log("  - Store token:", state.token ? "✅" : "❌");
+          console.log("  - Cookie token:", cookieToken ? "✅" : "❌");
+          console.log("  - isAuthenticated:", state.isAuthenticated ? "✅" : "❌");
+          console.log("  - serviceProvider:", state.serviceProvider ? "✅" : "❌");
+
+          if (cookieToken && !state.token) {
+            console.log("🔐 Found cookie token, updating store...");
+            set((state) => {
+              state.token = cookieToken;
+            });
+          }
+
+          if (!cookieToken && !state.token) {
+            console.log("🔐 No token found, marking as not authenticated");
+            set((state) => {
+              state.isAuthenticated = false;
+              state.serviceProvider = null;
+            });
+            return false;
+          }
+
+          return true;
+        },
+
         register: async (registrationData) => {
           set((state) => {
             state.isLoading = true;
@@ -228,13 +329,9 @@ const useServiceProviderStore = create(
           });
 
           try {
-            const data = await apiCall(
-              "/service-provider/create-service-provider",
-              {
-                method: "POST",
-                body: JSON.stringify(registrationData),
-              }
-            );
+            const data = await apiCall("post", "/service-provider/create-service-provider", {
+              body: registrationData,
+            });
 
             set((state) => {
               state.isLoading = false;
@@ -257,9 +354,8 @@ const useServiceProviderStore = create(
           });
 
           try {
-            const data = await apiCall("/service-provider/activation", {
-              method: "POST",
-              body: JSON.stringify(activationData),
+            const data = await apiCall("post", "/service-provider/activation", {
+              body: activationData,
             });
 
             set((state) => {
@@ -278,24 +374,39 @@ const useServiceProviderStore = create(
             throw error;
           }
         },
-
         loadServiceProvider: async () => {
           set((state) => {
             state.isLoading = true;
             state.error = null;
           });
-
+          const currentToken = get().token || localStorage.getItem("service-provider-store")
           try {
-            const data = await apiCall(
-              "/service-provider/get-service-provider"
-            );
+            // const currentToken = getTokenFromCookie();
+            console.log("currentToken:", currentToken);
 
+            if (!currentToken) {
+              console.log("🔐 No token available, cannot load service provider");
+              throw new Error("No authentication token available");
+            }
+            set((state) => {
+              state.token = currentToken;
+              state.isAuthenticated = true;
+            });
+
+            console.log("TOKEN!!!!!!", currentToken);
+
+            const data = await apiCall("get", "/service-provider/get-service-provider", { token: currentToken });
+
+            console.log()("🔐 Service provider data:", data);
             set((state) => {
               state.serviceProvider = data.serviceProvider;
               state.token = data.token;
               state.isAuthenticated = true;
               state.isLoading = false;
             });
+
+            // console.log("🔐 Service provider loaded successfully");
+            // console.log("🔐 Final token in store:", get().token ? "Present" : "Missing");
 
             return { success: true, data };
           } catch (error) {
@@ -312,11 +423,11 @@ const useServiceProviderStore = create(
 
         logout: async () => {
           try {
-            await apiCall("/service-provider/logout");
+            await apiCall("get", "/service-provider/logout");
           } catch (error) {
             console.error("Logout API call failed:", error);
           } finally {
-            // clearAuthCookie();
+            clearAuthCookie();
             set((state) => {
               state.serviceProvider = null;
               state.token = null;
@@ -347,7 +458,7 @@ const useServiceProviderStore = create(
               ...filters,
             });
 
-            const data = await apiCall(
+            const data = await apiCall("get",
               `/service-provider/get-service-provider-bookings/${serviceProvider._id}?${queryParams}`
             );
 
@@ -394,19 +505,11 @@ const useServiceProviderStore = create(
           }
         },
 
-        updateBookingStatus: async (
-          bookingId,
-          status,
-          cancellationReason = null
-        ) => {
+        updateBookingStatus: async (bookingId, status, cancellationReason = null) => {
           try {
-            const data = await apiCall(
-              `/service-provider/update-booking-status/${bookingId}`,
-              {
-                method: "PUT",
-                body: JSON.stringify({ status, cancellationReason }),
-              }
-            );
+            const data = await apiCall("put", `/service-provider/update-booking-status/${bookingId}`, {
+              body: { status, cancellationReason },
+            });
 
             set((state) => {
               const bookingIndex = state.bookings.findIndex(
@@ -439,81 +542,69 @@ const useServiceProviderStore = create(
         },
 
         // ===== MESSAGING ACTIONS =====
-        fetchConversations: async (filters = {}) => {
-          set((state) => {
-            state.isLoading = true;
-            state.error = null;
-          });
+        // fetchConversations: async (filters = {}) => {
+        //   set((state) => {
+        //     state.isLoading = true;
+        //     state.error = null;
+        //   });
 
-          try {
-            const queryParams = new URLSearchParams({
-              page: filters.page?.toString() || "1",
-              limit: filters.limit?.toString() || "20",
-              search: filters.search || "",
-              archived: filters.archived?.toString() || "false",
-            });
+        //   try {
+        //     const queryParams = new URLSearchParams({
+        //       page: filters.page?.toString() || "1",
+        //       limit: filters.limit?.toString() || "20",
+        //       search: filters.search || "",
+        //       archived: filters.archived?.toString() || "false",
+        //     });
 
-            console.log(
-              "Fetching conversations with params:",
-              queryParams.toString()
-            );
+        //     const data = await apiCall("get", `/service-provider/get-conversations?${queryParams}`);
 
-            // Use the correct endpoint that matches your backend
-            const data = await apiCall(
-              `/service-provider/get-conversations?${queryParams}`
-            );
+        //     console.log("Conversations API response:", data);
 
-            console.log("Conversations API response:", data);
+        //     set((state) => {
+        //       // Handle the response structure from your backend
+        //       const conversationsArray = Array.isArray(data.conversations)
+        //         ? data.conversations
+        //         : [];
 
-            set((state) => {
-              // Handle the response structure from your backend
-              const conversationsArray = Array.isArray(data.conversations)
-                ? data.conversations
-                : [];
+        //       state.conversations = conversationsArray.map((conv) => {
+        //         // Ensure proper structure for each conversation
+        //         const processedConv = {
+        //           ...conv,
+        //           unreadCount: conv.unreadCount || 0,
+        //           lastMessage: conv.lastMessage || "No messages yet",
+        //           members: Array.isArray(conv.members) ? conv.members : [],
+        //         };
 
-              state.conversations = conversationsArray.map((conv) => {
-                // Ensure proper structure for each conversation
-                const processedConv = {
-                  ...conv,
-                  unreadCount: conv.unreadCount || 0,
-                  lastMessage: conv.lastMessage || "No messages yet",
-                  members: Array.isArray(conv.members) ? conv.members : [],
-                };
+        //         console.log("Processing conversation:", processedConv);
+        //         return processedConv;
+        //       });
 
-                // Debug log each conversation
-                console.log("Processing conversation:", processedConv);
+        //       // Calculate total unread messages
+        //       state.unreadCount = state.conversations.reduce(
+        //         (total, conv) => total + (conv.unreadCount || 0),
+        //         0
+        //       );
+        //       state.isLoading = false;
+        //       state.error = null;
+        //     });
 
-                return processedConv;
-              });
-
-              // Calculate total unread messages
-              state.unreadCount = state.conversations.reduce(
-                (total, conv) => total + (conv.unreadCount || 0),
-                0
-              );
-
-              state.isLoading = false;
-              state.error = null;
-            });
-
-            console.log("Conversations set in state:", get().conversations);
-
-            return { success: true, data };
-          } catch (error) {
-            console.error("Error marking message as read:", error);
-            set((state) => {
-              state.error = error.message || "Failed to mark message as read";
-              state.isLoading = false;
-            });
-            throw error;
-          }
-        },
+        //     console.log("Conversations set in state:", get().conversations);
+        //     return { success: true, data };
+        //   } catch (error) {
+        //     console.error("Error fetching conversations:", error);
+        //     set((state) => {
+        //       state.error = error.message || "Failed to fetch conversations";
+        //       state.isLoading = false;
+        //     });
+        //     throw error;
+        //   }
+        // },
 
         fetchMessages: async (userId, page = 1, limit = 20) => {
           try {
             console.log("Fetching messages for userId:", userId);
 
-            const data = await apiCall(
+            const data = await apiCall("get",
               `/service-provider/get-messages-with-user/${userId}?page=${page}&limit=${limit}`
             );
 
@@ -535,12 +626,7 @@ const useServiceProviderStore = create(
               state.error = null;
             });
 
-            console.log(
-              "Messages set in state for userId:",
-              userId,
-              get().messages[userId]
-            );
-
+            console.log("Messages set in state for userId:", userId, get().messages[userId]);
             return { success: true, data };
           } catch (error) {
             console.error("Error fetching messages:", error);
@@ -554,20 +640,11 @@ const useServiceProviderStore = create(
 
         sendMessage: async (userId, messageData) => {
           try {
-            console.log(
-              "Sending message to userId:",
-              userId,
-              "with data:",
-              messageData
-            );
+            console.log("Sending message to userId:", userId, "with data:", messageData);
 
-            const data = await apiCall(
-              `/service-provider/reply-to-user/${userId}`,
-              {
-                method: "POST",
-                body: JSON.stringify(messageData),
-              }
-            );
+            const data = await apiCall("post", `/service-provider/reply-to-user/${userId}`, {
+              body: messageData,
+            });
 
             console.log("Send message API response:", data);
 
@@ -595,8 +672,7 @@ const useServiceProviderStore = create(
                     ...conv,
                     lastMessage: data.message?.content || "Media message",
                     lastMessageId: data.message?._id,
-                    updatedAt:
-                      data.message?.createdAt || new Date().toISOString(),
+                    updatedAt: data.message?.createdAt || new Date().toISOString(),
                   };
                 }
                 return conv;
@@ -606,11 +682,7 @@ const useServiceProviderStore = create(
               state.error = null;
             });
 
-            console.log(
-              "Message added to state. Current messages:",
-              get().messages[userId]
-            );
-
+            console.log("Message added to state. Current messages:", get().messages[userId]);
             return { success: true, data };
           } catch (error) {
             console.error("Error sending message:", error);
@@ -626,12 +698,7 @@ const useServiceProviderStore = create(
           try {
             console.log("Marking message as read:", messageId);
 
-            const data = await apiCall(
-              `/service-provider/mark-message-read/${messageId}`,
-              {
-                method: "PUT",
-              }
-            );
+            const data = await apiCall("put", `/service-provider/mark-message-read/${messageId}`);
 
             console.log("Mark message read API response:", data);
 
@@ -663,12 +730,7 @@ const useServiceProviderStore = create(
           try {
             console.log("Deleting message:", messageId);
 
-            const data = await apiCall(
-              `/service-provider/delete-message/${messageId}`,
-              {
-                method: "DELETE",
-              }
-            );
+            const data = await apiCall("delete", `/service-provider/delete-message/${messageId}`);
 
             console.log("Delete message API response:", data);
 
@@ -696,12 +758,7 @@ const useServiceProviderStore = create(
           try {
             console.log("Archiving conversation:", conversationId);
 
-            const data = await apiCall(
-              `/service-provider/archive-conversation/${conversationId}`,
-              {
-                method: "PUT",
-              }
-            );
+            const data = await apiCall("put", `/service-provider/archive-conversation/${conversationId}`);
 
             console.log("Archive conversation API response:", data);
 
@@ -726,19 +783,13 @@ const useServiceProviderStore = create(
           try {
             console.log("Blocking user:", userId);
 
-            const data = await apiCall(
-              `/service-provider/block-user/${userId}`,
-              {
-                method: "POST",
-              }
-            );
+            const data = await apiCall("post", `/service-provider/block-user/${userId}`);
 
             console.log("Block user API response:", data);
 
             set((state) => {
               if (state.serviceProvider) {
-                state.serviceProvider.blockedUsers =
-                  state.serviceProvider.blockedUsers || [];
+                state.serviceProvider.blockedUsers = state.serviceProvider.blockedUsers || [];
                 if (!state.serviceProvider.blockedUsers.includes(userId)) {
                   state.serviceProvider.blockedUsers.push(userId);
                 }
@@ -749,9 +800,7 @@ const useServiceProviderStore = create(
                 (conv) =>
                   !conv.members.some((member) => {
                     const memberId = member._id || member;
-                    return (
-                      memberId === userId || memberId.toString() === userId
-                    );
+                    return memberId === userId || memberId.toString() === userId;
                   })
               );
 
@@ -772,21 +821,15 @@ const useServiceProviderStore = create(
           try {
             console.log("Unblocking user:", userId);
 
-            const data = await apiCall(
-              `/service-provider/unblock-user/${userId}`,
-              {
-                method: "POST",
-              }
-            );
+            const data = await apiCall("post", `/service-provider/unblock-user/${userId}`);
 
             console.log("Unblock user API response:", data);
 
             set((state) => {
               if (state.serviceProvider && state.serviceProvider.blockedUsers) {
-                state.serviceProvider.blockedUsers =
-                  state.serviceProvider.blockedUsers.filter(
-                    (id) => id !== userId && id?.toString() !== userId
-                  );
+                state.serviceProvider.blockedUsers = state.serviceProvider.blockedUsers.filter(
+                  (id) => id !== userId && id?.toString() !== userId
+                );
               }
               state.error = null;
             });
@@ -809,8 +852,7 @@ const useServiceProviderStore = create(
 
             set((state) => {
               state.servicesOffered = serviceProvider.servicesOffered || [];
-              state.serviceStats.totalServices =
-                serviceProvider.servicesOffered?.length || 0;
+              state.serviceStats.totalServices = serviceProvider.servicesOffered?.length || 0;
             });
 
             return { success: true };
@@ -824,37 +866,28 @@ const useServiceProviderStore = create(
 
         addService: async (serviceData) => {
           try {
-            const data = await apiCall(
-              "/service-provider/add-service-offered",
-              {
-                method: "POST",
-                body: JSON.stringify(serviceData),
+            const newService = await apiAddService(serviceData);
+            console.log("new1", newService);
+            set((state) => ({
+              servicesOffered: [...state.servicesOffered, newService],
+              serviceStats: {
+                ...state.serviceStats,
+                totalServices: state.serviceStats.totalServices + 1
               }
-            );
+            }));
 
-            set((state) => {
-              state.servicesOffered.push(data.service);
-              state.serviceStats.totalServices += 1;
-            });
-
-            return { success: true, data };
+            return { success: true, service: newService };
           } catch (error) {
-            set((state) => {
-              state.error = error.message;
-            });
+            set({ error: error.message });
             throw error;
           }
         },
 
         updateService: async (serviceId, serviceData) => {
           try {
-            const data = await apiCall(
-              `/service-provider/update-service-offered/${serviceId}`,
-              {
-                method: "PUT",
-                body: JSON.stringify(serviceData),
-              }
-            );
+            const data = await apiCall("put", `/service-provider/update-service-offered/${serviceId}`, {
+              body: serviceData,
+            });
 
             set((state) => {
               const serviceIndex = state.servicesOffered.findIndex(
@@ -876,12 +909,7 @@ const useServiceProviderStore = create(
 
         deleteService: async (serviceId) => {
           try {
-            const data = await apiCall(
-              `/service-provider/delete-service-offered/${serviceId}`,
-              {
-                method: "DELETE",
-              }
-            );
+            const data = await apiCall("delete", `/service-provider/delete-service-offered/${serviceId}`);
 
             set((state) => {
               state.servicesOffered = state.servicesOffered.filter(
@@ -905,7 +933,7 @@ const useServiceProviderStore = create(
             const { serviceProvider } = get();
             if (!serviceProvider) throw new Error("Service provider not found");
 
-            const data = await apiCall(
+            const data = await apiCall("get",
               `/service-provider/get-service-provider-reviews/${serviceProvider._id}?page=${page}&limit=${limit}`
             );
 
@@ -915,11 +943,7 @@ const useServiceProviderStore = create(
                 totalReviews: data.totalReviews,
                 averageRating: serviceProvider.ratings || 0,
                 ratingDistribution: data.ratingDistribution || {
-                  1: 0,
-                  2: 0,
-                  3: 0,
-                  4: 0,
-                  5: 0,
+                  1: 0, 2: 0, 3: 0, 4: 0, 5: 0,
                 },
               };
               state.isLoading = false;
@@ -942,9 +966,7 @@ const useServiceProviderStore = create(
             if (startDate) queryParams.append("startDate", startDate);
             if (endDate) queryParams.append("endDate", endDate);
 
-            const data = await apiCall(
-              `/service-provider/stats?${queryParams}`
-            );
+            const data = await apiCall("get", `/service-provider/stats?${queryParams}`);
 
             console.log(data);
 
@@ -974,13 +996,9 @@ const useServiceProviderStore = create(
           });
 
           try {
-            const data = await apiCall(
-              "/service-provider/update-service-provider-info",
-              {
-                method: "PUT",
-                body: JSON.stringify(profileData),
-              }
-            );
+            const data = await apiCall("put", "/service-provider/update-service-provider-info", {
+              body: profileData,
+            });
 
             set((state) => {
               state.serviceProvider = data.serviceProvider;
@@ -1004,13 +1022,9 @@ const useServiceProviderStore = create(
           });
 
           try {
-            const data = await apiCall(
-              "/service-provider/update-service-provider-avatar",
-              {
-                method: "PUT",
-                body: JSON.stringify({ avatar: avatarData }),
-              }
-            );
+            const data = await apiCall("put", "/service-provider/update-service-provider-avatar", {
+              body: { avatar: avatarData },
+            });
 
             set((state) => {
               state.serviceProvider = data.serviceProvider;
@@ -1029,13 +1043,9 @@ const useServiceProviderStore = create(
 
         updateNotificationPreferences: async (preferences) => {
           try {
-            const data = await apiCall(
-              "/service-provider/update-notification-preferences",
-              {
-                method: "PUT",
-                body: JSON.stringify(preferences),
-              }
-            );
+            const data = await apiCall("put", "/service-provider/update-notification-preferences", {
+              body: preferences,
+            });
 
             set((state) => {
               state.serviceProvider = data.serviceProvider;
@@ -1109,7 +1119,7 @@ const useServiceProviderStore = create(
             if (!state.messages[senderId]) {
               state.messages[senderId] = [];
             }
-            state.messages[senderId].unshift(message);
+            state.messages[senderId].push(message);
             state.unreadCount += 1;
           });
         },
