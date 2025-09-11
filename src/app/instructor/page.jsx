@@ -4,7 +4,7 @@ import React from 'react'
 const InstructorHomepage = () => {
   return (
     <div>
-        <InstructorInfo />
+      <InstructorInfo />
     </div>
   )
 }

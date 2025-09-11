@@ -4,6 +4,8 @@ import useServiceProviderStore from "@/store/serviceStore";
 // Base API call function
 async function makeProxyCall(endpoint, options = {}) {
     const { method = "GET", body, params = {}, ...otherOptions } = options;
+
+    console.log('body', body)
     
     // Build query string with path and params
     const queryParams = new URLSearchParams({ 
@@ -103,6 +105,7 @@ export async function fetchConversations(params = {}) {
 
 export async function addService(serviceData) {
     try {
+
         const data = await makeProxyCall("/service-provider/add-service-offered", {
             method: "POST",
             body: serviceData
@@ -117,6 +120,8 @@ export async function addService(serviceData) {
         throw error;
     }
 }
+
+
 
 export async function getUser(){
     try {

@@ -65,7 +65,7 @@ export default function InstructorProfile() {
         }
       } else {
         toast.error("Failed to load profile. Please log in again.");
-        router.push("/instructor/login");
+        router.push("/instructor/auth/login");
       }
     };
     fetchInstructor();

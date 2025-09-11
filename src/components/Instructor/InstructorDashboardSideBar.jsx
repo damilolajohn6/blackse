@@ -39,13 +39,13 @@ const InstructorDashboardSideBar = ({ active, onClose }) => {
       id: 1,
     },
     {
-      href: "/instructor/courses",
+      href: "/instructor/dashboard/courses",
       icon: <FaBook size={20} />,
       label: "Courses",
       id: 2,
     },
     {
-      href: "/instructor/courses/create",
+      href: "/instructor/dashboard/courses/create",
       icon: <FaPlus size={20} />,
       label: "Create Course",
       id: 3,
@@ -99,7 +99,7 @@ const InstructorDashboardSideBar = ({ active, onClose }) => {
       id: 11,
     },
     {
-      href: "/instructor/profile",
+      href: "/instructor/dashboard/profile",
       icon: <FaUser size={20} />,
       label: "Profile",
       id: 12,

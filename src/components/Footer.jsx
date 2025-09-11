@@ -112,7 +112,7 @@ const Footer = () => {
             width={70}
             height={70}
             alt="BlackAndSell Logo"
-            style={{ filter: "brightness(0) invert(1)" }}
+            // style={{ filter: "brightness(0) invert(1)" }}
           />
           <br />
           <p>

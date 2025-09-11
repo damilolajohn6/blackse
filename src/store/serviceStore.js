@@ -13,7 +13,6 @@ const API_BASE_URL =
 const getTokenFromCookie = () => {
   if (typeof document === 'undefined') return null;
 
-
   const cookies = document.cookie.split(';');
   const tokenCookie = cookies.find(cookie =>
     cookie.trim().startsWith('service_provider_token=')
@@ -374,6 +373,7 @@ const useServiceProviderStore = create(
             throw error;
           }
         },
+        
         loadServiceProvider: async () => {
           set((state) => {
             state.isLoading = true;
@@ -866,8 +866,10 @@ const useServiceProviderStore = create(
 
         addService: async (serviceData) => {
           try {
-            const newService = await apiAddService(serviceData);
+            // const newService = await apiAddService(serviceData); 
+
             console.log("new1", newService);
+
             set((state) => ({
               servicesOffered: [...state.servicesOffered, newService],
               serviceStats: {

@@ -26,7 +26,7 @@ export default function InstructorAuthProvider({ children }) {
         toast.error("Please log in to access your shop", {
           toastId: "auth-error",
         });
-        router.push("/instructor/login");
+        router.push("/instructor/auth/login");
       } finally {
         setIsLoading(false);
       }

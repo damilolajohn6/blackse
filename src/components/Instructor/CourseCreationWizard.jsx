@@ -1,5 +1,4 @@
 "use client";
-
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useForm, useFieldArray, Controller } from "react-hook-form";
 import { useRouter } from "next/navigation";
@@ -20,15 +19,13 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { v4 as uuidv4 } from "uuid";
-import useInstructorStore from "@/store/instructorStore";
+import useInstructorStore from "@/store/instructorStore"; 
+
 import {
   Box,
-  TextField,
-  Select,
   MenuItem,
   FormControl,
   InputLabel,
-  Button,
   CircularProgress,
   Accordion,
   AccordionSummary,
@@ -37,9 +34,6 @@ import {
   LinearProgress,
   Autocomplete,
   Tooltip,
-  FormControlLabel,
-  Checkbox,
-  Alert,
   Stepper,
   Step,
   StepLabel,
@@ -49,6 +43,7 @@ import {
   ListItemText,
   Typography,
 } from "@mui/material";
+
 import {
   Add,
   Delete,
@@ -56,12 +51,47 @@ import {
   DragHandle,
   ExpandMore,
   Save,
-  CheckCircle,
   Warning,
 } from "@mui/icons-material";
+
 import { Editor } from "@tinymce/tinymce-react";
 import debounce from "lodash/debounce";
 import axios from "axios";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Separator } from "@/components/ui/separator"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Poppins, Jost } from "next/font/google";
+
+import {
+  Plus,
+  Trash2,
+  Upload,
+  CheckCircle, 
+  FileImage,
+  Video,
+  ChevronLeft,
+  ChevronRight,
+  // Save
+  AlertTriangle,
+} from "lucide-react"
+
+const poppins = Poppins(
+  {
+    subsets: ["latin"],
+    weight: ["100", "200", "300", "400", "500", "600", "700", "800"]
+  },
+)
+const jost = Jost(
+  {
+    subsets: ["latin"],
+    weight: ["100", "200", "300", "400", "500", "600", "700", "800"]
+  },
+)
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_SERVER || "http://localhost:8000/api/v2";
@@ -152,6 +182,7 @@ const SortableLecture = React.memo(
           borderRadius: 2,
           bgcolor: "background.paper",
         }}
+        className="space-y-3"
         role="listitem"
         aria-label={`Lecture ${index + 1}`}
       >
@@ -166,7 +197,7 @@ const SortableLecture = React.memo(
             Lecture {index + 1}: {lecture.title || "Untitled"}
           </Box>
         </Box>
-        <Controller
+        <Controller className="space-y-3 py-3"
           name={`content[${sectionIndex}].lectures[${index}].title`}
           control={control}
           rules={{
@@ -177,22 +208,23 @@ const SortableLecture = React.memo(
             },
           }}
           render={({ field }) => (
-            <TextField
-              {...field}
-              fullWidth
-              label="Lecture Title"
-              margin="normal"
-              error={
-                !!errors?.content?.[sectionIndex]?.lectures?.[index]?.title
-              }
-              helperText={
-                errors?.content?.[sectionIndex]?.lectures?.[index]?.title
-                  ?.message
-              }
-            />
+            <div className="">
+              <Input
+                {...field}
+                label="Lecture Title"
+                margin="normal"
+                error={
+                  !!errors?.content?.[sectionIndex]?.lectures?.[index]?.title
+                }
+                helperText={
+                  errors?.content?.[sectionIndex]?.lectures?.[index]?.title
+                    ?.message
+                }
+              />
+            </div>
           )}
         />
-        <Controller
+        <Controller className="space-y-3"
           name={`content[${sectionIndex}].lectures[${index}].description`}
           control={control}
           rules={{
@@ -202,12 +234,9 @@ const SortableLecture = React.memo(
             },
           }}
           render={({ field }) => (
-            <TextField
-              {...field}
-              fullWidth
+            <Textarea
+              {...field} className={'min-h-40'} value={field.value} onChange={(content) => field.onChange(content)}
               label="Lecture Description"
-              multiline
-              rows={4}
               margin="normal"
               error={
                 !!errors?.content?.[sectionIndex]?.lectures?.[index]
@@ -222,8 +251,6 @@ const SortableLecture = React.memo(
         />
         <Tooltip title="Upload a lecture video (MP4, max 2GB)">
           <Button
-            variant="outlined"
-            startIcon={<VideoLibrary />}
             onClick={() =>
               document.getElementById(`video-upload-${key}`).click()
             }
@@ -245,32 +272,33 @@ const SortableLecture = React.memo(
               Video Preview:
             </Box>
             <video
+              className="w-full"
               src={watch(
                 `content[${sectionIndex}].lectures[${index}].videoUrl`
               )}
               controls
-              style={{ maxWidth: "100%", maxHeight: 200 }}
+              style={{ maxWidth: "100%", maxHeight: 300 }}
             />
           </Box>
         )}
         {watch(`content[${sectionIndex}].lectures[${index}].timeline`)?.length >
           0 && (
-          <Box sx={{ mt: 2 }}>
-            <Box component="p" sx={textStyles.body2}>
-              Video Timeline:
+            <Box sx={{ mt: 2 }}>
+              <Box component="p" sx={textStyles.body2}>
+                Video Timeline:
+              </Box>
+              <List dense>
+                {watch(
+                  `content[${sectionIndex}].lectures[${index}].timeline`
+                ).map((point, idx) => (
+                  <ListItem key={idx}>
+                    <ListItemText
+                      primary={`${point.timestamp} - ${point.description}`}
+                    />
+                  </ListItem>
+                ))}
+              </List>
             </Box>
-            <List dense>
-              {watch(
-                `content[${sectionIndex}].lectures[${index}].timeline`
-              ).map((point, idx) => (
-                <ListItem key={idx}>
-                  <ListItemText
-                    primary={`${point.timestamp} - ${point.description}`}
-                  />
-                </ListItem>
-              ))}
-            </List>
-          </Box>
         )}
         {uploadProgress[key] !== undefined && uploadProgress[key] < 100 && (
           <Box sx={{ mt: 2 }}>
@@ -280,13 +308,9 @@ const SortableLecture = React.memo(
             <LinearProgress variant="determinate" value={uploadProgress[key]} />
           </Box>
         )}
-        <Button
-          variant="outlined"
-          color="error"
-          startIcon={<Delete />}
+        <Button variant="destructive" color="error"
           onClick={() => removeLecture(index)}
-          sx={{ mt: 1 }}
-        >
+          sx={{ mt: 1 }}>
           Delete Lecture
         </Button>
       </Box>
@@ -320,7 +344,6 @@ const SortableSection = React.memo(
     const { attributes, listeners, setNodeRef, transform, transition } =
       useSortable({ id: section.id });
     const style = { transform: CSS.Transform.toString(transform), transition };
-
     const {
       fields: lectures,
       append,
@@ -363,7 +386,7 @@ const SortableSection = React.memo(
     }, [append, lectures.length]);
 
     return (
-      <Accordion defaultExpanded sx={{ mb: 2, boxShadow: 1 }}>
+      <Accordion defaultExpanded sx={{ mb: 2 }}>
         <AccordionSummary
           expandIcon={<ExpandMore />}
           ref={setNodeRef}
@@ -395,14 +418,14 @@ const SortableSection = React.memo(
               },
             }}
             render={({ field }) => (
-              <TextField
-                {...field}
-                fullWidth
-                label="Section Title"
-                margin="normal"
-                error={!!errors?.content?.[index]?.sectionTitle}
-                helperText={errors?.content?.[index]?.sectionTitle?.message}
-              />
+              <div className="py-3">
+                <Input
+                  {...field}
+                  label="Section Title"
+                  error={!!errors?.content?.[index]?.sectionTitle}
+                  helperText={errors?.content?.[index]?.sectionTitle?.message}
+                />
+              </div>
             )}
           />
           <DndContext
@@ -437,22 +460,21 @@ const SortableSection = React.memo(
               ))}
             </SortableContext>
           </DndContext>
-          <Button
-            variant="contained"
-            startIcon={<Add />}
-            onClick={appendLecture}
-            sx={{ mr: 2 }}
-          >
-            Add Lecture
-          </Button>
-          <Button
-            variant="outlined"
-            color="error"
-            startIcon={<Delete />}
-            onClick={() => removeSection(index)}
-          >
-            Delete Section
-          </Button>
+          <div className="flex gap-3">
+            <Button
+              className='bg-green-500 hover:bg-green-600 text-white'
+              onClick={appendLecture}
+            >
+              Add Lecture
+            </Button>
+            <Button
+              variant="destructive"
+              color="error"
+              onClick={() => removeSection(index)}
+            >
+              Delete Section
+            </Button>
+          </div>
         </AccordionDetails>
       </Accordion>
     );
@@ -526,6 +548,9 @@ const CourseCreationWizard = ({ courseId }) => {
     mode: "onChange",
   });
 
+  const watchedValues = watch();
+
+
   const {
     fields: content,
     append: appendSection,
@@ -536,6 +561,7 @@ const CourseCreationWizard = ({ courseId }) => {
     name: "content",
     keyName: "fieldId",
   });
+
   const {
     fields: learningObjectives,
     append: appendObjective,
@@ -545,6 +571,7 @@ const CourseCreationWizard = ({ courseId }) => {
     name: "learningObjectives",
     keyName: "fieldId",
   });
+
   const {
     fields: prerequisites,
     append: appendPrerequisite,
@@ -554,6 +581,7 @@ const CourseCreationWizard = ({ courseId }) => {
     name: "prerequisites",
     keyName: "fieldId",
   });
+
   const {
     fields: targetAudience,
     append: appendAudience,
@@ -563,6 +591,7 @@ const CourseCreationWizard = ({ courseId }) => {
     name: "targetAudience",
     keyName: "fieldId",
   });
+
   const {
     fields: categories,
     append: appendCategory,
@@ -572,6 +601,7 @@ const CourseCreationWizard = ({ courseId }) => {
     name: "categories",
     keyName: "fieldId",
   });
+
   const {
     fields: tags,
     append: appendTag,
@@ -588,6 +618,7 @@ const CourseCreationWizard = ({ courseId }) => {
   );
 
   const isFree = watch("isFree");
+
   const watchedFields = watch([
     "title",
     "description",
@@ -1040,9 +1071,9 @@ const CourseCreationWizard = ({ courseId }) => {
           thumbnail: { url: data.thumbnail.url },
           previewVideo: data.previewVideo.url
             ? {
-                url: data.previewVideo.url,
-                duration: data.previewVideo.duration,
-              }
+              url: data.previewVideo.url,
+              duration: data.previewVideo.duration,
+            }
             : null,
           content: data.content.map((section, secIdx) => ({
             sectionTitle: section.sectionTitle,
@@ -1091,7 +1122,7 @@ const CourseCreationWizard = ({ courseId }) => {
               ? "Course updated successfully"
               : "Course created successfully"
           );
-          router.push("/instructor/courses");
+          router.push("/instructor/dashboard/courses");
         }
       } catch (error) {
         console.error("Submit error:", error.response?.data || error.message);
@@ -1106,12 +1137,40 @@ const CourseCreationWizard = ({ courseId }) => {
     [courseId, createCourse, updateCourse, uploadLectureVideo, router]
   );
 
+  const PUBLISHCHECKLIST = useMemo(() => {
+    const checklist = {
+      hasTitle: !!watchedValues.title,
+      hasDescription: !!watchedValues.description,
+      hasObjectives: watchedValues.learningObjectives?.some(obj => obj.text?.trim()),
+      hasCategories: watchedValues.categories?.some(cat => cat.name?.trim()),
+      hasThumbnail: !!watchedValues.thumbnail?.url,
+      hasContent: watchedValues.content?.length > 0 && 
+                  watchedValues.content.some(section => 
+                    section.sectionTitle?.trim() && section.lectures?.length > 0
+                  ),
+      hasDuration: true // Assuming duration calculation
+    }
+    // Debug logging to see which items are false
+    // console.log('Publish checklist:', checklist)
+    // console.log('Watched values:', {
+    //   title: watchedValues.title,
+    //   description: watchedValues.description,
+    //   learningObjectives: watchedValues.learningObjectives,
+    //   categories: watchedValues.categories,
+    //   thumbnail: watchedValues.thumbnail,
+    //   content: watchedValues.content
+    // })
+    return checklist
+  }, [watchedValues]);
+
   const handlePublish = useCallback(async () => {
-    const canPublish = Object.values(publishChecklist).every((item) => item);
+    const canPublish = Object.values(PUBLISHCHECKLIST).every((item) => item);
+
     if (!canPublish) {
       toast.error("Please complete all required fields before publishing");
       return;
     }
+
     try {
       await trigger();
       if (!isValid) {
@@ -1134,22 +1193,27 @@ const CourseCreationWizard = ({ courseId }) => {
     () => appendObjective({ id: uuidv4(), text: "" }),
     [appendObjective]
   );
+
   const appendPrerequisiteStable = useCallback(
     () => appendPrerequisite({ id: uuidv4(), text: "" }),
     [appendPrerequisite]
   );
+
   const appendAudienceStable = useCallback(
     () => appendAudience({ id: uuidv4(), text: "" }),
     [appendAudience]
   );
+
   const appendCategoryStable = useCallback(
     () => appendCategory({ id: uuidv4(), name: "" }),
     [appendCategory]
   );
+
   const appendTagStable = useCallback(
     () => appendTag({ id: uuidv4(), name: "" }),
     [appendTag]
   );
+
   const appendSectionStable = useCallback(
     () =>
       appendSection({
@@ -1166,8 +1230,8 @@ const CourseCreationWizard = ({ courseId }) => {
       {
         label: "Basic Information",
         content: (
-          <Box sx={{ maxWidth: 800 }}>
-            <Tooltip title="Enter the course title">
+          <Box className='space-y-4'>
+            <Tooltip className={jost.className} style={{ fontFamily: 'poppins' }} title="Enter the course title">
               <Controller
                 name="title"
                 control={control}
@@ -1183,16 +1247,20 @@ const CourseCreationWizard = ({ courseId }) => {
                   },
                 }}
                 render={({ field }) => (
-                  <TextField
-                    {...field}
-                    fullWidth
-                    label="Course Title"
-                    margin="normal"
-                    error={!!errors.title}
-                    helperText={errors.title?.message}
-                  />
+                  <div className="space-y-2">
+                    <Label htmlFor="title">Course Title</Label>
+                    <Input
+                      {...field}
+                      id="title"
+                      placeholder="Enter course title"
+                      className={errors.title ? "border-destructive" : ""}
+                    />
+                  </div>
                 )}
               />
+              {errors.title && (
+                <p className="text-sm text-destructive">{errors.title.message}</p>
+              )}
             </Tooltip>
             <Controller
               name="description"
@@ -1209,11 +1277,10 @@ const CourseCreationWizard = ({ courseId }) => {
                 },
               }}
               render={({ field }) => (
-                <Box sx={{ mt: 2 }}>
-                  <Box component="p" sx={{ ...textStyles.body2, mb: 1 }}>
-                    Course Description
-                  </Box>
-                  <Editor
+                <Box className="space-y-2" sx={{ mt: 2 }}>
+                  <Label htmlFor="description">Course Description</Label>
+                  <Textarea {...field} className={'min-h-40'} value={field.value} onChange={(content) => field.onChange(content)}></Textarea>
+                  {/* <Editor
                     apiKey={
                       process.env.NEXT_PUBLIC_TINYMCE_API_KEY ||
                       "khsgpv7gbp874ds6d2u3pab16l0fareackakzba70jnyqedw"
@@ -1234,7 +1301,7 @@ const CourseCreationWizard = ({ courseId }) => {
                         toast.error("Failed to initialize text editor");
                       }
                     }}
-                  />
+                  /> */}
                   {errors.description && (
                     <Box
                       component="span"
@@ -1246,66 +1313,85 @@ const CourseCreationWizard = ({ courseId }) => {
                 </Box>
               )}
             />
-            <FormControl fullWidth margin="normal">
-              <InputLabel>Level</InputLabel>
+            <div className="space-y-2">
+              <Label htmlFor="level">Level</Label>
               <Controller
                 name="level"
                 control={control}
-                defaultValue="All Levels"
                 render={({ field }) => (
-                  <Select {...field}>
-                    <MenuItem value="Beginner">Beginner</MenuItem>
-                    <MenuItem value="Intermediate">Intermediate</MenuItem>
-                    <MenuItem value="Advanced">Advanced</MenuItem>
-                    <MenuItem value="All Levels">All Levels</MenuItem>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Select level" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Beginner">Beginner</SelectItem>
+                      <SelectItem value="Intermediate">Intermediate</SelectItem>
+                      <SelectItem value="Advanced">Advanced</SelectItem>
+                      <SelectItem value="All Levels">All Levels</SelectItem>
+                    </SelectContent>
                   </Select>
                 )}
               />
-            </FormControl>
-            <FormControl fullWidth margin="normal">
-              <InputLabel>Language</InputLabel>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="language">Language</Label>
               <Controller
                 name="language"
                 control={control}
-                defaultValue="English"
                 render={({ field }) => (
-                  <Select {...field}>
-                    <MenuItem value="English">English</MenuItem>
-                    <MenuItem value="Spanish">Spanish</MenuItem>
-                    <MenuItem value="French">French</MenuItem>
-                    <MenuItem value="German">German</MenuItem>
-                    <MenuItem value="Chinese">Chinese</MenuItem>
-                    <MenuItem value="Japanese">Japanese</MenuItem>
-                    <MenuItem value="Other">Other</MenuItem>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Select language" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="English">English</SelectItem>
+                      <SelectItem value="Spanish">Spanish</SelectItem>
+                      <SelectItem value="French">French</SelectItem>
+                      <SelectItem value="German">German</SelectItem>
+                      <SelectItem value="Chinese">Chinese</SelectItem>
+                      <SelectItem value="Japanese">Japanese</SelectItem>
+                      <SelectItem value="Other">Other</SelectItem>
+                    </SelectContent>
                   </Select>
                 )}
               />
-            </FormControl>
-            <FormControlLabel
-              control={<Checkbox {...register("isFree")} />}
-              label="Free course"
-            />
-            {!isFree && (
+            </div>
+            <div className="flex items-center space-x-2">
               <Controller
-                name="price"
+                name="isFree"
                 control={control}
-                rules={{
-                  required: "Price is required for paid courses",
-                  min: { value: 1, message: "Price must be greater than 0" },
-                }}
                 render={({ field }) => (
-                  <TextField
-                    {...field}
-                    fullWidth
-                    label="Price (USD)"
-                    type="number"
-                    margin="normal"
-                    error={!!errors.price}
-                    helperText={errors.price?.message}
-                    inputProps={{ step: "0.01" }}
+                  <Checkbox
+                    id="isFree"
+                    checked={field.value}
+                    onCheckedChange={field.onChange}
                   />
                 )}
               />
+              <Label htmlFor="isFree">This is a free course</Label>
+            </div>
+            {!isFree && (
+              <div className="space-y-2">
+                <Label htmlFor="price">Price (USD) *</Label>
+                <Controller
+                  name="price"
+                  control={control}
+                  render={({ field }) => (
+                    <Input
+                      {...field}
+                      id="price"
+                      type="number"
+                      step="0.01"
+                      placeholder="0.00"
+                      onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                      className={errors.price ? "border-destructive" : ""}
+                    />
+                  )}
+                />
+                {errors.price && (
+                  <p className="text-sm text-destructive">{errors.price.message}</p>
+                )}
+              </div>
             )}
           </Box>
         ),
@@ -1313,11 +1399,11 @@ const CourseCreationWizard = ({ courseId }) => {
       {
         label: "Learning Objectives & Audience",
         content: (
-          <Box sx={{ maxWidth: 800 }}>
+          <Box>
             <Box component="h6" sx={{ ...textStyles.h6, mb: 2 }}>
               Learning Objectives
             </Box>
-            {learningObjectives.map((objective, index) => (
+            {/* {learningObjectives.map((objective, index) => (
               <Box
                 key={objective.fieldId}
                 sx={{ display: "flex", mb: 2, alignItems: "center" }}
@@ -1336,7 +1422,6 @@ const CourseCreationWizard = ({ courseId }) => {
                   render={({ field }) => (
                     <TextField
                       {...field}
-                      fullWidth
                       label={`Objective ${index + 1}`}
                       error={!!errors.learningObjectives?.[index]?.text}
                       helperText={
@@ -1352,217 +1437,331 @@ const CourseCreationWizard = ({ courseId }) => {
                   <Delete />
                 </IconButton>
               </Box>
+            ))} */}
+            {learningObjectives.map((field, index) => (
+              <div key={field.id} className="flex gap-2 space-y-3">
+                <Controller
+                  name={`learningObjectives.${index}.text`}
+                  control={control}
+                  render={({ field }) => (
+                    <Input
+                      {...field}
+                      placeholder={`Learning objective ${index + 1}`}
+                      className="flex-1"
+                    />
+                  )}
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => removeObjective(index)}
+                  disabled={learningObjectives.length === 1}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
             ))}
             <Button
-              variant="outlined"
-              startIcon={<Add />}
               onClick={appendObjectiveStable}
               sx={{ mb: 3 }}
             >
               Add Objective
             </Button>
-            <Box component="h6" sx={{ ...textStyles.h6, mb: 2 }}>
-              Prerequisites
-            </Box>
-            {prerequisites.map((prereq, index) => (
-              <Box
-                key={prereq.fieldId}
-                sx={{ display: "flex", mb: 2, alignItems: "center" }}
-              >
-                <Controller
-                  name={`prerequisites[${index}].text`}
-                  control={control}
-                  rules={{
-                    maxLength: {
-                      value: 200,
-                      message: "Prerequisite cannot exceed 200 characters",
-                    },
-                  }}
-                  render={({ field }) => (
-                    <TextField
-                      {...field}
-                      fullWidth
-                      label={`Prerequisite ${index + 1}`}
-                      error={!!errors.prerequisites?.[index]?.text}
-                      helperText={errors.prerequisites?.[index]?.text?.message}
-                    />
-                  )}
-                />
-                <IconButton
-                  onClick={() => removePrerequisite(index)}
-                  disabled={prerequisites.length === 1}
-                >
-                  <Delete />
-                </IconButton>
+            {/* <div className="py-3">
+              <Box component="h6" sx={{ ...textStyles.h6, mb: 2 }}>
+                Prerequisites
               </Box>
-            ))}
-            <Button
-              variant="outlined"
-              startIcon={<Add />}
+              {prerequisites.map((prereq, index) => (
+                <Box
+                  key={prereq.fieldId}
+                  sx={{ display: "flex", mb: 2, alignItems: "center" }}
+                >
+                  <Controller
+                    name={`prerequisites[${index}].text`}
+                    control={control}
+                    rules={{
+                      maxLength: {
+                        value: 200,
+                        message: "Prerequisite cannot exceed 200 characters",
+                      },
+                    }}
+                    render={({ field }) => (
+                      <TextField
+                        {...field}
+                        label={`Prerequisite ${index + 1}`}
+                        error={!!errors.prerequisites?.[index]?.text}
+                        helperText={errors.prerequisites?.[index]?.text?.message}
+                      />
+                    )}
+                  />
+                  <IconButton
+                    onClick={() => removePrerequisite(index)}
+                    disabled={prerequisites.length === 1}
+                  >
+                    <Delete />
+                  </IconButton>
+                </Box>
+              ))}
+            </div> */}
+            {/* Prerequisites */}
+            <div className="space-y-2 py-3">
+              <div className="flex items-center justify-between">
+                <Label className="text-lg font-semibold">Prerequisites</Label>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => appendPrerequisite({ text: "" })}
+                >
+                  <Plus className="mr-2 h-4 w-4" />
+                  Add Prerequisite
+                </Button>
+              </div>
+              {prerequisites.map((field, index) => (
+                <div key={field.id} className="flex gap-2">
+                  <Controller
+                    name={`prerequisites.${index}.text`}
+                    control={control}
+                    render={({ field }) => (
+                      <Input
+                        {...field}
+                        placeholder={`Prerequisite ${index + 1}`}
+                        className="flex-1"
+                      />
+                    )}
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => removePrerequisite(index)}
+                    disabled={prerequisites.length === 1}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              ))}
+              <Separator />
+            </div>
+            {/* <Button
               onClick={appendPrerequisiteStable}
               sx={{ mb: 3 }}
             >
               Add Prerequisite
-            </Button>
-            <Box component="h6" sx={{ ...textStyles.h6, mb: 2 }}>
-              Target Audience
-            </Box>
-            {targetAudience.map((audience, index) => (
-              <Box
-                key={audience.fieldId}
-                sx={{ display: "flex", mb: 2, alignItems: "center" }}
-              >
-                <Controller
-                  name={`targetAudience[${index}].text`}
-                  control={control}
-                  rules={{
-                    maxLength: {
-                      value: 200,
-                      message: "Audience cannot exceed 200 characters",
-                    },
-                  }}
-                  render={({ field }) => (
-                    <TextField
-                      {...field}
-                      fullWidth
-                      label={`Audience ${index + 1}`}
-                      error={!!errors.targetAudience?.[index]?.text}
-                      helperText={errors.targetAudience?.[index]?.text?.message}
-                    />
-                  )}
-                />
-                <IconButton
-                  onClick={() => removeAudience(index)}
-                  disabled={targetAudience.length === 1}
-                >
-                  <Delete />
-                </IconButton>
+            </Button> */}
+            <div className="py-3">
+              <Box component="h6" sx={{ ...textStyles.h6, mb: 2 }}>
+                Target Audience
               </Box>
-            ))}
-            <Button
-              variant="outlined"
-              startIcon={<Add />}
-              onClick={appendAudienceStable}
-            >
-              Add Audience
-            </Button>
+              {/* {targetAudience.map((audience, index) => (
+                <Box key={audience.fieldId} sx={{ display: "flex", mb: 2, alignItems: "center" }}>
+                  <Controller
+                    name={`targetAudience[${index}].text`}
+                    control={control}
+                    rules={{
+                      maxLength: {
+                        value: 200,
+                        message: "Audience cannot exceed 200 characters",
+                      },
+                    }}
+                    render={({ field }) => (
+                      <TextField
+                        {...field}
+                        label={`Audience ${index + 1}`}
+                        error={!!errors.targetAudience?.[index]?.text}
+                        helperText={errors.targetAudience?.[index]?.text?.message}
+                      />
+                    )}
+                  />
+                  <IconButton
+                    onClick={() => removeAudience(index)}
+                    disabled={targetAudience.length === 1}
+                  >
+                    <Delete />
+                  </IconButton>
+                </Box>
+              ))} */}
+              {targetAudience.map((field, index) => (
+                <div key={field.id} className="flex gap-2 space-y-3">
+                  <Controller
+                    name={`targetAudience.${index}.text`}
+                    control={control}
+                    render={({ field }) => (
+                      <Input
+                        {...field}
+                        placeholder={`Target audience ${index + 1}`}
+                        className="flex-1"
+                      />
+                    )}
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => removeAudience(index)}
+                    disabled={targetAudience.length === 1}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              ))}
+              <Button
+                onClick={appendAudienceStable}>
+                Add Audience
+              </Button>
+            </div>
           </Box>
         ),
       },
       {
         label: "Categories & Tags",
         content: (
-          <Box sx={{ maxWidth: 800 }}>
-            <Box component="h6" sx={{ ...textStyles.h6, mb: 2 }}>
-              Categories
-            </Box>
-            {categories.map((category, index) => (
-              <Box
-                key={category.fieldId}
-                sx={{ display: "flex", mb: 2, alignItems: "center" }}
+          // <Box sx={{ maxWidth: 800 }}>
+          //   <Box component="h6" sx={{ ...textStyles.h6, mb: 2 }}>
+          //     Categories
+          //   </Box>
+          //   {categories.map((category, index) => (
+          //     <Box
+          //       key={category.fieldId}
+          //       sx={{ display: "flex", mb: 2, alignItems: "center" }}
+          //     >
+          //       <Controller
+          //         name={`categories[${index}].name`}
+          //         control={control}
+          //         rules={{
+          //           required:
+          //             index === 0 ? "At least one category required" : false,
+          //           maxLength: {
+          //             value: 50,
+          //             message: "Category cannot exceed 50 characters",
+          //           },
+          //         }}
+          //         render={({ field }) => (
+          //           <Autocomplete
+          //             freeSolo
+          //             options={suggestedCategories}
+          //             value={field.value}
+          //             onChange={(e, value) => field.onChange(value || "")}
+          //             renderInput={(params) => (
+          //               <TextField
+          //                 {...params}
+          //                 label={`Category ${index + 1}`}
+          //                 error={!!errors.categories?.[index]?.name}
+          //                 helperText={errors.categories?.[index]?.name?.message}
+          //               />
+          //             )}
+          //           />
+          //         )}
+          //       />
+          //       <IconButton
+          //         onClick={() => removeCategory(index)}
+          //         disabled={categories.length === 1}
+          //       >
+          //         <Delete />
+          //       </IconButton>
+          //     </Box>
+          //   ))}
+          //   <Button
+          //     variant="outlined"
+          //     onClick={appendCategoryStable}
+          //     sx={{ mb: 3 }}
+          //   >
+          //     Add Category
+          //   </Button>
+          //   <Box component="h6" sx={{ ...textStyles.h6, mb: 2 }}>
+          //     Tags
+          //   </Box>
+          //   {tags.map((tag, index) => (
+          //     <Box
+          //       key={tag.fieldId}
+          //       sx={{ display: "flex", mb: 2, alignItems: "center" }}
+          //     >
+          //       <Controller
+          //         name={`tags[${index}].name`}
+          //         control={control}
+          //         rules={{
+          //           maxLength: {
+          //             value: 50,
+          //             message: "Tag cannot exceed 50 characters",
+          //           },
+          //         }}
+          //         render={({ field }) => (
+          //           <Autocomplete
+          //             freeSolo
+          //             options={suggestedTags}
+          //             value={field.value}
+          //             onChange={(e, value) => field.onChange(value || "")}
+          //             renderInput={(params) => (
+          //               <TextField
+          //                 {...params}
+          //                 label={`Tag ${index + 1}`}
+          //                 error={!!errors.tags?.[index]?.name}
+          //                 helperText={errors.tags?.[index]?.name?.message}
+          //               />
+          //             )}
+          //           />
+          //         )}
+          //       />
+          //       <IconButton
+          //         onClick={() => removeTag(index)}
+          //         disabled={tags.length === 1}
+          //       >
+          //         <Delete />
+          //       </IconButton>
+          //     </Box>
+          //   ))}
+          //   <Button
+          //     variant="outlined"
+          //     onClick={appendTagStable}
+          //   >
+          //     Add Tag
+          //   </Button>
+          // </Box>
+          <div className="">
+            <div className="flex items-center justify-between">
+              <Label className="text-lg font-semibold">Categories</Label>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => appendCategory({ name: "" })}
               >
+                <Plus className="mr-2 h-4 w-4" />
+                Add Category
+              </Button>
+            </div>
+            <div className="text-sm text-muted-foreground mb-2">
+              Suggested: {suggestedCategories.slice(0, 5).join(", ")}
+            </div>
+            {categories.map((field, index) => (
+              <div key={field.id} className="flex gap-2 space-y-3">
                 <Controller
-                  name={`categories[${index}].name`}
+                  name={`categories.${index}.name`}
                   control={control}
-                  rules={{
-                    required:
-                      index === 0 ? "At least one category required" : false,
-                    maxLength: {
-                      value: 50,
-                      message: "Category cannot exceed 50 characters",
-                    },
-                  }}
                   render={({ field }) => (
-                    <Autocomplete
-                      fullWidth
-                      freeSolo
-                      options={suggestedCategories}
-                      value={field.value}
-                      onChange={(e, value) => field.onChange(value || "")}
-                      renderInput={(params) => (
-                        <TextField
-                          {...params}
-                          label={`Category ${index + 1}`}
-                          error={!!errors.categories?.[index]?.name}
-                          helperText={errors.categories?.[index]?.name?.message}
-                        />
-                      )}
+                    <Input
+                      {...field}
+                      placeholder={`Category ${index + 1}`}
+                      className="flex-1"
                     />
                   )}
                 />
-                <IconButton
+                <Button
+                  type="button"
+                  variant="outline"
                   onClick={() => removeCategory(index)}
                   disabled={categories.length === 1}
                 >
-                  <Delete />
-                </IconButton>
-              </Box>
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
             ))}
-            <Button
-              variant="outlined"
-              startIcon={<Add />}
-              onClick={appendCategoryStable}
-              sx={{ mb: 3 }}
-            >
-              Add Category
-            </Button>
-            <Box component="h6" sx={{ ...textStyles.h6, mb: 2 }}>
-              Tags
-            </Box>
-            {tags.map((tag, index) => (
-              <Box
-                key={tag.fieldId}
-                sx={{ display: "flex", mb: 2, alignItems: "center" }}
-              >
-                <Controller
-                  name={`tags[${index}].name`}
-                  control={control}
-                  rules={{
-                    maxLength: {
-                      value: 50,
-                      message: "Tag cannot exceed 50 characters",
-                    },
-                  }}
-                  render={({ field }) => (
-                    <Autocomplete
-                      fullWidth
-                      freeSolo
-                      options={suggestedTags}
-                      value={field.value}
-                      onChange={(e, value) => field.onChange(value || "")}
-                      renderInput={(params) => (
-                        <TextField
-                          {...params}
-                          label={`Tag ${index + 1}`}
-                          error={!!errors.tags?.[index]?.name}
-                          helperText={errors.tags?.[index]?.name?.message}
-                        />
-                      )}
-                    />
-                  )}
-                />
-                <IconButton
-                  onClick={() => removeTag(index)}
-                  disabled={tags.length === 1}
-                >
-                  <Delete />
-                </IconButton>
-              </Box>
-            ))}
-            <Button
-              variant="outlined"
-              startIcon={<Add />}
-              onClick={appendTagStable}
-            >
-              Add Tag
-            </Button>
-          </Box>
+          </div>
         ),
       },
       {
         label: "Media",
         content: (
-          <Box sx={{ maxWidth: 800 }}>
+          <Box>
             <Tooltip title="Upload a thumbnail image (JPEG/PNG, max 5MB)">
               <Button
                 variant="outlined"
@@ -1570,11 +1769,8 @@ const CourseCreationWizard = ({ courseId }) => {
                   document.getElementById("thumbnail-upload").click()
                 }
                 disabled={uploadingMedia.thumbnail}
-                startIcon={
-                  uploadingMedia.thumbnail && <CircularProgress size={20} />
-                }
               >
-                Upload Thumbnail (max 5MB)
+                Upload Thumbnail (max 5MB) {uploadingMedia.thumbnail && <CircularProgress size={10} />}
               </Button>
             </Tooltip>
             <input
@@ -1595,7 +1791,7 @@ const CourseCreationWizard = ({ courseId }) => {
                 <img
                   src={watchedFields.thumbnail.url}
                   alt="Thumbnail"
-                  style={{ maxWidth: "100%", maxHeight: 200 }}
+                  style={{ maxWidth: "100%", maxHeight: 300 }}
                 />
               </Box>
             )}
@@ -1604,12 +1800,9 @@ const CourseCreationWizard = ({ courseId }) => {
                 variant="outlined"
                 onClick={() => document.getElementById("preview-video").click()}
                 disabled={uploadingMedia.previewVideo}
-                startIcon={
-                  uploadingMedia.previewVideo && <CircularProgress size={20} />
-                }
                 sx={{ mt: 2 }}
               >
-                Upload Preview Video (max 200MB, 5 min)
+                Upload Preview Video (max 200MB, 5 min) {uploadingMedia.previewVideo && <CircularProgress size={10} />}
               </Button>
             </Tooltip>
             <input
@@ -1630,7 +1823,8 @@ const CourseCreationWizard = ({ courseId }) => {
                 <video
                   src={watch("previewVideo.url")}
                   controls
-                  style={{ maxWidth: "100%", maxHeight: 200 }}
+                  className="w-full"
+                  style={{ maxWidth: "100%", maxHeight: 300 }}
                 />
               </Box>
             )}
@@ -1640,7 +1834,7 @@ const CourseCreationWizard = ({ courseId }) => {
       {
         label: "Content",
         content: (
-          <Box sx={{ maxWidth: 800 }}>
+          <Box sx={{ boxShadow: 0 }}>
             <DndContext
               sensors={sensors}
               collisionDetection={closestCenter}
@@ -1668,8 +1862,6 @@ const CourseCreationWizard = ({ courseId }) => {
               </SortableContext>
             </DndContext>
             <Button
-              variant="contained"
-              startIcon={<Add />}
               onClick={appendSectionStable}
             >
               Add Section
@@ -1680,104 +1872,156 @@ const CourseCreationWizard = ({ courseId }) => {
       {
         label: "Review & Publish",
         content: (
-          <Box sx={{ maxWidth: 800 }}>
-            <Box component="h6" sx={{ ...textStyles.h6, mb: 2 }}>
-              Publish Readiness Checklist
-            </Box>
-            <List>
-              <ListItem>
-                <ListItemText
-                  primary="Course Title"
-                  secondary={
-                    publishChecklist.hasTitle ? "Completed" : "Missing"
+          // <Box sx={{ maxWidth: 800 }}>
+          //   <Box component="h6" sx={{ ...textStyles.h6, mb: 2 }}>
+          //     Publish Readiness Checklist
+          //   </Box>
+          //   <List>
+          //     <ListItem>
+          //       <ListItemText
+          //         primary="Course Title"
+          //         secondary={
+          //           publishChecklist.hasTitle ? "Completed" : "Missing"
+          //         }
+          //       />
+          //       {publishChecklist.hasTitle ? (
+          //         <CheckCircle color="success" />
+          //       ) : (
+          //         <Warning color="warning" />
+          //       )}
+          //     </ListItem>
+          //     <ListItem>
+          //       <ListItemText
+          //         primary="Course Description"
+          //         secondary={
+          //           publishChecklist.hasDescription ? "Completed" : "Missing"
+          //         }
+          //       />
+          //       {publishChecklist.hasDescription ? (
+          //         <CheckCircle color="success" />
+          //       ) : (
+          //         <Warning color="warning" />
+          //       )}
+          //     </ListItem>
+          //     <ListItem>
+          //       <ListItemText
+          //         primary="Learning Objectives"
+          //         secondary={
+          //           publishChecklist.hasObjectives ? "Completed" : "Missing"
+          //         }
+          //       />
+          //       {publishChecklist.hasObjectives ? (
+          //         <CheckCircle color="success" />
+          //       ) : (
+          //         <Warning color="warning" />
+          //       )}
+          //     </ListItem>
+          //     <ListItem>
+          //       <ListItemText
+          //         primary="Categories"
+          //         secondary={
+          //           publishChecklist.hasCategories ? "Completed" : "Missing"
+          //         }
+          //       />
+          //       {publishChecklist.hasCategories ? (
+          //         <CheckCircle color="success" />
+          //       ) : (
+          //         <Warning color="warning" />
+          //       )}
+          //     </ListItem>
+          //     <ListItem>
+          //       <ListItemText
+          //         primary="Thumbnail"
+          //         secondary={
+          //           publishChecklist.hasThumbnail ? "Completed" : "Missing"
+          //         }
+          //       />
+          //       {publishChecklist.hasThumbnail ? (
+          //         <CheckCircle color="success" />
+          //       ) : (
+          //         <Warning color="warning" />
+          //       )}
+          //     </ListItem>
+          //     <ListItem>
+          //       <ListItemText
+          //         primary="Content (At least one section with lectures)"
+          //         secondary={
+          //           publishChecklist.hasContent ? "Completed" : "Missing"
+          //         }
+          //       />
+          //       {publishChecklist.hasContent ? (
+          //         <CheckCircle color="success" />
+          //       ) : (
+          //         <Warning color="warning" />
+          //       )}
+          //     </ListItem>
+          //     <ListItem>
+          //       <ListItemText
+          //         primary="Total Duration (At least 1 minute)"
+          //         secondary={
+          //           publishChecklist.hasDuration ? "Completed" : "Missing"
+          //         }
+          //       />
+          //       {publishChecklist.hasDuration ? (
+          //         <CheckCircle color="success" />
+          //       ) : (
+          //         <Warning color="warning" />
+          //       )}
+          //     </ListItem>
+          //   </List>
+          // </Box>
+          <div className="space-y-8">
+            <div>
+              <h3 className="text-lg font-semibold mb-4">Publish Readiness Checklist</h3>
+              <div className="space-y-3">
+                {Object.entries(PUBLISHCHECKLIST).map(([key, completed]) => {
+                  const labels = {
+                    hasTitle: "Course Title",
+                    hasDescription: "Course Description",
+                    hasObjectives: "Learning Objectives",
+                    hasCategories: "Categories",
+                    hasThumbnail: "Thumbnail",
+                    hasContent: "Course Content",
+                    hasDuration: "Total Duration"
                   }
-                />
-                {publishChecklist.hasTitle ? (
-                  <CheckCircle color="success" />
-                ) : (
-                  <Warning color="warning" />
-                )}
-              </ListItem>
-              <ListItem>
-                <ListItemText
-                  primary="Course Description"
-                  secondary={
-                    publishChecklist.hasDescription ? "Completed" : "Missing"
-                  }
-                />
-                {publishChecklist.hasDescription ? (
-                  <CheckCircle color="success" />
-                ) : (
-                  <Warning color="warning" />
-                )}
-              </ListItem>
-              <ListItem>
-                <ListItemText
-                  primary="Learning Objectives"
-                  secondary={
-                    publishChecklist.hasObjectives ? "Completed" : "Missing"
-                  }
-                />
-                {publishChecklist.hasObjectives ? (
-                  <CheckCircle color="success" />
-                ) : (
-                  <Warning color="warning" />
-                )}
-              </ListItem>
-              <ListItem>
-                <ListItemText
-                  primary="Categories"
-                  secondary={
-                    publishChecklist.hasCategories ? "Completed" : "Missing"
-                  }
-                />
-                {publishChecklist.hasCategories ? (
-                  <CheckCircle color="success" />
-                ) : (
-                  <Warning color="warning" />
-                )}
-              </ListItem>
-              <ListItem>
-                <ListItemText
-                  primary="Thumbnail"
-                  secondary={
-                    publishChecklist.hasThumbnail ? "Completed" : "Missing"
-                  }
-                />
-                {publishChecklist.hasThumbnail ? (
-                  <CheckCircle color="success" />
-                ) : (
-                  <Warning color="warning" />
-                )}
-              </ListItem>
-              <ListItem>
-                <ListItemText
-                  primary="Content (At least one section with lectures)"
-                  secondary={
-                    publishChecklist.hasContent ? "Completed" : "Missing"
-                  }
-                />
-                {publishChecklist.hasContent ? (
-                  <CheckCircle color="success" />
-                ) : (
-                  <Warning color="warning" />
-                )}
-              </ListItem>
-              <ListItem>
-                <ListItemText
-                  primary="Total Duration (At least 1 minute)"
-                  secondary={
-                    publishChecklist.hasDuration ? "Completed" : "Missing"
-                  }
-                />
-                {publishChecklist.hasDuration ? (
-                  <CheckCircle color="success" />
-                ) : (
-                  <Warning color="warning" />
-                )}
-              </ListItem>
-            </List>
-          </Box>
+
+                  return (
+                    <div key={key} className="flex justify-between items-center gap-3">
+                      <div className="flex items-center gap-2">
+                        {completed ? (
+                          <CheckCircle className="h-5 w-5 text-success" />
+                        ) : (
+                          <AlertTriangle className="h-5 w-5 text-warning" />
+                        )}
+                        <span className={completed ? "text-foreground" : "text-muted-foreground"}>
+                          {labels[key]}
+                        </span>
+                      </div>
+                      <span className="text-sm text-muted-foreground">
+                        {completed ? "Completed" : "Missing"}
+                      </span>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+
+            {Object.values(PUBLISHCHECKLIST).every(Boolean) ? (
+              <Alert className={'flex items-center gap-1'}>
+                <CheckCircle className="h-4 w-4" />
+                <AlertDescription>
+                  Your course is ready to publish! All required fields are complete.
+                </AlertDescription>
+              </Alert>
+            ) : (
+              <Alert>
+                <AlertTriangle className="h-4 w-4" />
+                <AlertDescription>
+                  Please complete all required fields before publishing your course.
+                </AlertDescription>
+              </Alert>
+            )}
+          </div>
         ),
       },
     ],
@@ -1828,7 +2072,7 @@ const CourseCreationWizard = ({ courseId }) => {
         {courseId ? "Edit Course" : "Create New Course"}
       </Box>
       <Box sx={{ mb: 4 }}>
-        <Box component="p" sx={{ ...textStyles.body2, mb: 1 }}>
+        <Box style={{ fontFamily: 'poppins' }} component="p" sx={{ ...textStyles.body2, mb: 1 }}>
           Progress: {progress}%
         </Box>
         <LinearProgress variant="determinate" value={progress} />
@@ -1850,29 +2094,28 @@ const CourseCreationWizard = ({ courseId }) => {
                 )}
                 {activeStep < steps.length - 1 && (
                   <Button
-                    variant="contained"
                     onClick={async () => {
                       const fieldsToValidate =
                         activeStep === 0
                           ? [
-                              "title",
-                              "description",
-                              "level",
-                              "language",
-                              "price",
-                              "isFree",
-                            ]
+                            "title",
+                            "description",
+                            "level",
+                            "language",
+                            "price",
+                            "isFree",
+                          ]
                           : activeStep === 1
-                          ? [
+                            ? [
                               "learningObjectives",
                               "prerequisites",
                               "targetAudience",
                             ]
-                          : activeStep === 2
-                          ? ["categories", "tags"]
-                          : activeStep === 3
-                          ? ["thumbnail", "previewVideo"]
-                          : ["content"];
+                            : activeStep === 2
+                              ? ["categories", "tags"]
+                              : activeStep === 3
+                                ? ["thumbnail", "previewVideo"]
+                                : ["content"];
                       const isStepValid = await trigger(fieldsToValidate);
                       if (isStepValid) setActiveStep(index + 1);
                       else toast.error("Please complete all required fields");
@@ -1884,24 +2127,23 @@ const CourseCreationWizard = ({ courseId }) => {
                 )}
                 {activeStep === steps.length - 1 && (
                   <>
+                    {isSubmitting && <CircularProgress size={20} />}
                     <Button
                       type="submit"
-                      variant="contained"
+                      variant={courseId ? "primary" : "secondary"}
                       onClick={handleSubmit(onSubmit)}
                       disabled={isLoading || isSubmitting}
-                      startIcon={isSubmitting && <CircularProgress size={20} />}
-                    >
+                      className={courseId ? "bg-indigo-500 text-white" : ""}>
                       {courseId ? "Update Course" : "Create Course"}
                     </Button>
                     {courseId && (
                       <Button
                         variant="contained"
-                        color="success"
                         onClick={handlePublish}
                         disabled={
                           !isValid ||
                           isSubmitting ||
-                          !Object.values(publishChecklist).every((item) => item)
+                          !Object.values(PUBLISHCHECKLIST).every((item) => item)
                         }
                       >
                         Submit for Review

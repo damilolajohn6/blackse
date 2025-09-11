@@ -1,8 +1,16 @@
-/* eslint-disable no-unused-vars */
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import axios from "axios";
 import { toast } from "react-toastify";
+
+// Helper function to get cookie value
+const getCookie = (name) => {
+  if (typeof document === "undefined") return null;
+  const value = `; ${document.cookie}`;
+  const parts = value.split(`; ${name}=`);
+  if (parts.length === 2) return parts.pop().split(";").shift();
+  return null;
+};
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_SERVER || "http://localhost:8000/api/v2";
@@ -41,10 +49,183 @@ const useInstructorStore = create(
       courses: [],
       totalCourses: 0,
 
+      // Utility methods
+      isTokenValid: () => {
+        const token =
+          get().instructorToken ||
+          (typeof window !== "undefined"
+            ? localStorage.getItem("instructor_token")
+            : null) ||
+          getCookie("instructor_token");
+        if (!token) return false;
+
+        try {
+          const payload = JSON.parse(atob(token.split(".")[1]));
+          const currentTime = Date.now() / 1000;
+          return payload.exp > currentTime;
+        } catch {
+          return false;
+        }
+      },
+
+      clearInstructorData: () => {
+        set({
+          instructor: null,
+          instructorToken: null,
+          isInstructor: false,
+          dashboardStats: null,
+          withdrawals: [],
+          courses: [],
+          totalCourses: 0,
+        });
+        if (typeof window !== "undefined") {
+          localStorage.removeItem("instructor_token");
+        }
+      },
+
+      refreshToken: async () => {
+        try {
+          const currentToken =
+            get().instructorToken ||
+            (typeof window !== "undefined"
+              ? localStorage.getItem("instructor_token")
+              : null) ||
+            getCookie("instructor_token");
+
+          if (!currentToken) {
+            return { success: false, message: "No token to refresh" };
+          }
+
+          const res = await axios.post(
+            `${API_BASE_URL}/instructor/refresh-token`,
+            {},
+            {
+              headers: { Authorization: `Bearer ${currentToken}` },
+              withCredentials: true,
+            }
+          );
+
+          const newToken = res.data.token || res.data.data?.token;
+          if (!newToken) {
+            throw new Error("No new token received");
+          }
+
+          set({ instructorToken: newToken });
+          if (typeof window !== "undefined") {
+            localStorage.setItem("instructor_token", newToken);
+          }
+          return { success: true, token: newToken };
+        } catch (error) {
+          console.error(
+            "Refresh token error:",
+            error.response?.data || error.message
+          );
+          return { success: false, message: "Token refresh failed" };
+        }
+      },
+
+      loadInstructor: async () => {
+        set({ isLoading: true });
+        try {
+          const currentToken =
+            get().instructorToken ||
+            (typeof window !== "undefined"
+              ? localStorage.getItem("instructor_token")
+              : null) ||
+            getCookie("instructor_token");
+
+          console.log("Load instructor token check:", {
+            storeToken: !!get().instructorToken,
+            localStorageToken:
+              typeof window !== "undefined"
+                ? !!localStorage.getItem("instructor_token")
+                : false,
+            cookieToken: !!getCookie("instructor_token"),
+            hasToken: !!currentToken,
+          });
+
+          if (!currentToken) {
+            console.log("No instructor token available for loadInstructor");
+            set({
+              instructor: null,
+              instructorToken: null,
+              isInstructor: false,
+            });
+            return { success: false, message: "No instructor token available" };
+          }
+
+          const res = await axios.get(
+            `${API_BASE_URL}/instructor/get-instructor`,
+            {
+              headers: { Authorization: `Bearer ${currentToken}` },
+              withCredentials: true,
+            }
+          );
+
+          console.log("Load instructor response:", res.data);
+
+          const instructorData =
+            res.data.data || res.data.instructor || res.data;
+
+          if (!instructorData) {
+            console.error("No instructor data found in response:", res.data);
+            throw new Error("Instructor data not found in response");
+          }
+
+          set({
+            instructor: instructorData,
+            instructorToken: currentToken,
+            isInstructor:
+              instructorData.approvalStatus?.isInstructorApproved || false,
+          });
+
+          if (typeof window !== "undefined") {
+            localStorage.setItem("instructor_token", currentToken);
+          }
+          return { success: true, instructor: instructorData };
+        } catch (error) {
+          console.error(
+            "Load instructor error:",
+            error.message,
+            error.response?.data
+          );
+
+          // Handle network errors gracefully
+          if (error.message?.includes('Network Error') || error.message?.includes('CONNECTION_REFUSED') || error.code === 'NETWORK_ERROR') {
+            console.log("Network error during instructor load, backend may be unavailable");
+            return { success: false, message: "Network error - backend unavailable" };
+          }
+
+          if (
+            error.response?.status === 401 ||
+            error.response?.status === 404
+          ) {
+            set({
+              instructor: null,
+              instructorToken: null,
+              isInstructor: false,
+            });
+            if (typeof window !== "undefined") {
+              localStorage.removeItem("instructor_token");
+            }
+          }
+          return {
+            success: false,
+            message:
+              error.response?.data?.message || "Failed to load instructor",
+          };
+        } finally {
+          set({ isLoading: false });
+        }
+      },
+
       checkInstructorAuth: async () => {
         set({ isLoading: true });
         try {
-          const token = localStorage.getItem("instructor_token");
+          const token =
+            typeof window !== "undefined"
+              ? localStorage.getItem("instructor_token")
+              : null;
           if (!token) {
             set({
               instructor: null,
@@ -61,11 +242,14 @@ const useInstructorStore = create(
               withCredentials: true,
             }
           );
+
+          const instructorData =
+            res.data.data || res.data.instructor || res.data;
           set({
-            instructor: res.data.instructor,
+            instructor: instructorData,
             instructorToken: token,
             isInstructor:
-              res.data.instructor.approvalStatus.isInstructorApproved,
+              instructorData?.approvalStatus?.isInstructorApproved || false,
           });
           return { success: true, isInstructor: true };
         } catch (error) {
@@ -75,8 +259,478 @@ const useInstructorStore = create(
             error.response?.data
           );
           set({ instructor: null, instructorToken: null, isInstructor: false });
-          localStorage.removeItem("instructor_token");
+          if (typeof window !== "undefined") {
+            localStorage.removeItem("instructor_token");
+          }
           return { success: false, isInstructor: false };
+        } finally {
+          set({ isLoading: false });
+        }
+      },
+
+      loginInstructor: async (email, password, router) => {
+        set({ isLoading: true });
+        try {
+          const res = await axios.post(
+            `${API_BASE_URL}/instructor/login-instructor`,
+            { email, password },
+            { withCredentials: true }
+          );
+
+          console.log("Login response:", res.data);
+
+          const { instructor, token } = res.data.data || res.data;
+
+          if (!instructor) {
+            throw new Error("Instructor data not found in response");
+          }
+
+          if (!token) {
+            throw new Error("Authentication token not found in response");
+          }
+
+          const isApproved =
+            instructor.approvalStatus?.isInstructorApproved || false;
+
+          set({
+            instructor: instructor,
+            instructorToken: token,
+            isInstructor: isApproved,
+          });
+
+          if (typeof window !== "undefined") {
+            localStorage.setItem("instructor_token", token);
+          }
+
+          toast.success("Instructor login successful!");
+          router.push("/instructor/dashboard");
+          return { success: true };
+        } catch (error) {
+          console.error(
+            "Instructor login error:",
+            error.message,
+            error.response?.data
+          );
+          const message =
+            error.response?.data?.message ||
+            error.message ||
+            "Instructor login failed.";
+          toast.error(message);
+          return { success: false, message };
+        } finally {
+          set({ isLoading: false });
+        }
+      },
+
+      logoutInstructor: async (router) => {
+        set({ isLoading: true });
+        try {
+          await axios.get(`${API_BASE_URL}/instructor/instructor-logout`, {
+            withCredentials: true,
+          });
+
+          get().clearInstructorData();
+          toast.success("Instructor logged out successfully!");
+          await router.push("/instructor/auth/login");
+          return { success: true };
+        } catch (error) {
+          console.error(
+            "Instructor logout error:",
+            error.message,
+            error.response?.data
+          );
+          const message =
+            error.response?.data?.message || "Instructor logout failed.";
+          toast.error(message);
+          return { success: false, message };
+        } finally {
+          set({ isLoading: false });
+        }
+      },
+
+      updateInstructor: async (instructorData) => {
+        set({ isLoading: true });
+        try {
+          if (!instructorData || Object.keys(instructorData).length === 0) {
+            throw new Error("No data provided for update");
+          }
+
+          const res = await axios.put(
+            `${API_BASE_URL}/instructor/update-instructor`,
+            instructorData,
+            {
+              headers: { Authorization: `Bearer ${get().instructorToken}` },
+              withCredentials: true,
+            }
+          );
+
+          set({ instructor: res.data.instructor });
+          toast.success("Profile updated successfully");
+          return { success: true, instructor: res.data.instructor };
+        } catch (error) {
+          console.error(
+            "Instructor update error:",
+            error.response?.data || error.message
+          );
+          toast.error(
+            error.response?.data?.message || "Failed to update profile"
+          );
+          return {
+            success: false,
+            message: error.response?.data?.message || error.message,
+          };
+        } finally {
+          set({ isLoading: false });
+        }
+      },
+
+      loadDashboardAnalytics: async (period = "30d") => {
+        set({ isLoading: true });
+        try {
+          console.log("Loading dashboard analytics with period:", period);
+          const res = await axios.get(
+            `${API_BASE_URL}/course/instructor-dashboard`,
+            {
+              params: { period },
+              headers: { Authorization: `Bearer ${get().instructorToken}` },
+              withCredentials: true,
+            }
+          );
+          console.log("Dashboard analytics response:", res.data);
+          const dashboardData = res.data.data || res.data;
+          
+          // Handle case where dashboard data might be null or undefined
+          if (!dashboardData) {
+            console.warn("No dashboard data received from API");
+            const defaultData = {
+              overview: {
+                totalCourses: 0,
+                publishedCourses: 0,
+                draftCourses: 0,
+                totalEnrollments: 0,
+                totalRevenue: 0,
+                averageRating: 0,
+              },
+              recentAnalytics: {
+                newEnrollments: 0,
+                newReviews: 0,
+                averageRating: 0,
+              },
+              topCourses: [],
+            };
+            set({ dashboardStats: defaultData });
+            return { success: true, stats: defaultData };
+          }
+          
+          // Transform the data structure to match frontend expectations
+          const transformedData = {
+            totalCourses: dashboardData.overview?.totalCourses || 0,
+            publishedCourses: dashboardData.overview?.publishedCourses || 0,
+            draftCourses: dashboardData.overview?.draftCourses || 0,
+            totalEnrollments: dashboardData.overview?.totalEnrollments || 0,
+            totalRevenue: dashboardData.overview?.totalRevenue || 0,
+            averageRating: dashboardData.overview?.averageRating || 0,
+            accountBalance: dashboardData.overview?.totalRevenue || 0, // Use revenue as available balance
+            monthlyEnrollments: dashboardData.recentAnalytics?.newEnrollments || 0,
+            totalReviews: dashboardData.recentAnalytics?.newReviews || 0,
+            recentAnalytics: dashboardData.recentAnalytics,
+            topCourses: dashboardData.topCourses,
+          };
+          
+          set({ dashboardStats: transformedData });
+          return { success: true, stats: transformedData };
+        } catch (error) {
+          console.error(
+            "Load dashboard analytics error:",
+            error.message,
+            error.response?.data
+          );
+          const message =
+            error.response?.data?.message || "Failed to load analytics";
+          return { success: false, message };
+        } finally {
+          set({ isLoading: false });
+        }
+      },
+
+      getInstructorStats: async () => {
+        try {
+          const res = await axios.get(
+            `${API_BASE_URL}/instructor/instructor-stats`,
+            {
+              headers: { Authorization: `Bearer ${get().instructorToken}` },
+              withCredentials: true,
+            }
+          );
+          const stats = res.data.data || res.data.stats || res.data;
+          return { success: true, stats };
+        } catch (error) {
+          console.error(
+            "Get instructor stats error:",
+            error.message,
+            error.response?.data
+          );
+          // Return default stats instead of failing
+          const defaultStats = {
+            totalCourses: 0,
+            totalStudents: 0,
+            totalEarnings: 0,
+            averageRating: 0,
+            totalReviews: 0,
+          };
+          return { success: true, stats: defaultStats };
+        }
+      },
+
+      fetchWithdrawals: async (params = {}) => {
+        try {
+          const res = await axios.get(
+            `${API_BASE_URL}/instructor-withdraw/get-my-instructor-withdrawals`,
+            {
+              params,
+              headers: { Authorization: `Bearer ${get().instructorToken}` },
+              withCredentials: true,
+            }
+          );
+          const withdrawalsData = res.data.data || res.data;
+          set({
+            withdrawals: withdrawalsData.withdrawals || [],
+            totalWithdrawals: withdrawalsData.total || 0,
+          });
+          return { success: true, withdrawals: withdrawalsData.withdrawals || [] };
+        } catch (error) {
+          console.error(
+            "Fetch withdrawals error:",
+            error.message,
+            error.response?.data
+          );
+          const message =
+            error.response?.data?.message || "Failed to fetch withdrawals";
+          return { success: false, message, withdrawals: [] };
+        }
+      },
+
+      getWithdrawalStats: async () => {
+        try {
+          console.log("Loading withdrawal stats");
+          const res = await axios.get(
+            `${API_BASE_URL}/instructor-withdraw/withdrawal-stats`,
+            {
+              headers: { Authorization: `Bearer ${get().instructorToken}` },
+              withCredentials: true,
+            }
+          );
+          console.log("Withdrawal stats response:", res.data);
+          const stats = res.data.data || res.data.stats || res.data;
+          return { success: true, stats };
+        } catch (error) {
+          console.error(
+            "Get withdrawal stats error:",
+            error.message,
+            error.response?.data
+          );
+          // Return default stats instead of failing
+          const defaultStats = {
+            totalWithdrawals: 0,
+            totalAmount: 0,
+            pendingAmount: 0,
+            approvedAmount: 0,
+            succeededAmount: 0,
+            rejectedAmount: 0,
+            statusBreakdown: {}
+          };
+          console.log("Using default withdrawal stats:", defaultStats);
+          return { success: true, stats: defaultStats };
+        }
+      },
+
+      cancelWithdrawal: async (withdrawalId) => {
+        set({ isLoading: true });
+        try {
+          const res = await axios.delete(
+            `${API_BASE_URL}/instructor-withdraw/cancel-withdrawal/${withdrawalId}`,
+            {
+              headers: { Authorization: `Bearer ${get().instructorToken}` },
+              withCredentials: true,
+            }
+          );
+          
+          // Update local state
+          set((state) => ({
+            withdrawals: state.withdrawals.map(w => 
+              w._id === withdrawalId 
+                ? { ...w, status: 'Cancelled' }
+                : w
+            ),
+          }));
+          
+          toast.success(res.data.message || "Withdrawal cancelled successfully");
+          return { success: true };
+        } catch (error) {
+          console.error(
+            "Cancel withdrawal error:",
+            error.message,
+            error.response?.data
+          );
+          const message =
+            error.response?.data?.message || "Failed to cancel withdrawal";
+          toast.error(message);
+          return { success: false, message };
+        } finally {
+          set({ isLoading: false });
+        }
+      },
+
+      fetchCourses: async (params = {}) => {
+        try {
+          const res = await axios.get(
+            `${API_BASE_URL}/course/get-instructor-courses`,
+            {
+              params,
+              headers: { Authorization: `Bearer ${get().instructorToken}` },
+              withCredentials: true,
+            }
+          );
+          const coursesData = res.data.data || res.data;
+          set({
+            courses: coursesData.courses || [],
+            totalCourses: coursesData.total || 0,
+          });
+          return { success: true, courses: coursesData.courses || [] };
+        } catch (error) {
+          console.error(
+            "Fetch courses error:",
+            error.message,
+            error.response?.data
+          );
+          const message =
+            error.response?.data?.message || "Failed to fetch courses";
+          return { success: false, message, courses: [] };
+        }
+      },
+
+      getCourseById: async (courseId) => {
+        try {
+          const res = await axios.get(
+            `${API_BASE_URL}/course/get-course/${courseId}`,
+            {
+              headers: { Authorization: `Bearer ${get().instructorToken}` },
+              withCredentials: true,
+            }
+          );
+          const courseData = res.data.data || res.data;
+          return { success: true, course: courseData.course };
+        } catch (error) {
+          console.error(
+            "Get course error:",
+            error.message,
+            error.response?.data
+          );
+          const message =
+            error.response?.data?.message || "Failed to fetch course";
+          return { success: false, message };
+        }
+      },
+
+      getCourseAnalytics: async (courseId, period = "30d") => {
+        try {
+          const res = await axios.get(
+            `${API_BASE_URL}/course/course-analytics/${courseId}`,
+            {
+              params: { period },
+              headers: { Authorization: `Bearer ${get().instructorToken}` },
+              withCredentials: true,
+            }
+          );
+          const analytics = res.data.data || res.data;
+          return { success: true, analytics };
+        } catch (error) {
+          console.error(
+            "Get course analytics error:",
+            error.message,
+            error.response?.data
+          );
+          const message =
+            error.response?.data?.message || "Failed to fetch course analytics";
+          return { success: false, message };
+        }
+      },
+
+      getCourseInsights: async (courseId) => {
+        try {
+          const res = await axios.get(
+            `${API_BASE_URL}/course/course-insights/${courseId}`,
+            {
+              headers: { Authorization: `Bearer ${get().instructorToken}` },
+              withCredentials: true,
+            }
+          );
+          const insights = res.data.data || res.data;
+          return { success: true, insights };
+        } catch (error) {
+          console.error(
+            "Get course insights error:",
+            error.message,
+            error.response?.data
+          );
+          const message =
+            error.response?.data?.message || "Failed to fetch course insights";
+          return { success: false, message };
+        }
+      },
+
+      createWithdrawal: async (amount, withdrawMethod, bankDetails = {}) => {
+        set({ isLoading: true });
+        try {
+          if (!amount || amount <= 0) {
+            throw new Error("Please enter a valid withdrawal amount");
+          }
+
+          if (!withdrawMethod) {
+            throw new Error("Please select a withdrawal method");
+          }
+
+          if (amount < 10) {
+            throw new Error("Minimum withdrawal amount is $10");
+          }
+
+          if (amount > 10000) {
+            throw new Error("Maximum withdrawal amount is $10,000 per day");
+          }
+
+          const payload = {
+            amount,
+            withdrawMethod,
+            ...(withdrawMethod.type === "BankTransfer" && bankDetails),
+          };
+
+          const res = await axios.post(
+            `${API_BASE_URL}/instructor-withdraw/create-instructor-withdraw-request`,
+            payload,
+            {
+              headers: { Authorization: `Bearer ${get().instructorToken}` },
+              withCredentials: true,
+            }
+          );
+
+          const withdrawalData = res.data.data || res.data;
+          set((state) => ({
+            withdrawals: [withdrawalData.withdraw, ...state.withdrawals],
+          }));
+          toast.success("Withdrawal request created successfully!");
+          return { success: true, withdraw: withdrawalData.withdraw };
+        } catch (error) {
+          console.error(
+            "Create withdrawal error:",
+            error.message,
+            error.response?.data
+          );
+          const message =
+            error.response?.data?.message ||
+            error.message ||
+            "Failed to create withdrawal";
+          toast.error(message);
+          return { success: false, message };
         } finally {
           set({ isLoading: false });
         }
@@ -85,35 +739,18 @@ const useInstructorStore = create(
       createCourse: async (courseData, router) => {
         set({ isLoading: true });
         try {
-          const payload = {
-            title: courseData.title,
-            description: courseData.description,
-            learningObjectives: courseData.learningObjectives,
-            prerequisites: courseData.prerequisites,
-            targetAudience: courseData.targetAudience,
-            isFree: courseData.isFree,
-            price: courseData.isFree ? 0 : courseData.price,
-            categories: courseData.categories,
-            tags: courseData.tags,
-            level: courseData.level,
-            language: courseData.language,
-            thumbnail: courseData.thumbnail,
-            previewVideo: courseData.previewVideo,
-            content: courseData.content,
-          };
-
           const res = await axios.post(
             `${API_BASE_URL}/course/create-course`,
-            payload,
+            courseData,
             {
               headers: { Authorization: `Bearer ${get().instructorToken}` },
               withCredentials: true,
             }
           );
-
+          const courseResult = res.data.data || res.data;
           toast.success("Course created successfully");
-          router.push("/instructor/courses");
-          return { success: true, course: res.data.course };
+          router.push("/instructor/dashboard/courses");
+          return { success: true, course: courseResult.course };
         } catch (error) {
           console.error(
             "Course creation error:",
@@ -134,34 +771,18 @@ const useInstructorStore = create(
       updateCourse: async (courseId, courseData) => {
         set({ isLoading: true });
         try {
-          const payload = {
-            title: courseData.title,
-            description: courseData.description,
-            learningObjectives: courseData.learningObjectives,
-            prerequisites: courseData.prerequisites,
-            targetAudience: courseData.targetAudience,
-            isFree: courseData.isFree,
-            price: courseData.isFree ? 0 : courseData.price,
-            categories: courseData.categories,
-            tags: courseData.tags,
-            level: courseData.level,
-            language: courseData.language,
-            thumbnail: courseData.thumbnail,
-            previewVideo: courseData.previewVideo,
-            content: courseData.content,
-          };
-
           const res = await axios.put(
             `${API_BASE_URL}/course/update-course/${courseId}`,
-            payload,
+            courseData,
             {
               headers: { Authorization: `Bearer ${get().instructorToken}` },
               withCredentials: true,
             }
           );
 
+          const courseResult = res.data.data || res.data;
           toast.success("Course updated successfully");
-          return { success: true, course: res.data.course };
+          return { success: true, course: courseResult.course };
         } catch (error) {
           console.error(
             "Course update error:",
@@ -179,107 +800,21 @@ const useInstructorStore = create(
         }
       },
 
-      uploadLectureVideo: async (courseId, sectionId, lectureData) => {
+      publishCourse: async (courseId, router) => {
         set({ isLoading: true });
         try {
-          const payload = {
-            lectureTitle: lectureData.title,
-            videoUrl: lectureData.videoUrl,
-            duration: lectureData.duration || 0,
-            description: lectureData.description,
-          };
-
           const res = await axios.post(
-            `${API_BASE_URL}/course/upload-lecture-video/${courseId}/${sectionId}`,
-            payload,
-            { headers: { Authorization: `Bearer ${get().instructorToken}` } }
-          );
-
-          toast.success("Lecture video uploaded successfully");
-          return { success: true, course: res.data.course };
-        } catch (error) {
-          console.error(
-            "Upload lecture video error:",
-            error.response?.data || error.message
-          );
-          toast.error(
-            error.response?.data?.message || "Failed to upload lecture video"
-          );
-          return {
-            success: false,
-            message: error.response?.data?.message || error.message,
-          };
-        } finally {
-          set({ isLoading: false });
-        }
-      },
-
-      addLectureResource: async (
-        courseId,
-        sectionId,
-        lectureId,
-        resourceData
-      ) => {
-        set({ isLoading: true });
-        try {
-          let resourceUrl = resourceData.url;
-          if (resourceData.file && resourceData.type !== "Link") {
-            const resourceResult = await uploadToCloudinary(
-              resourceData.file,
-              `courses/${courseId}/resources`,
-              resourceData.type === "PDF" ? "raw" : "image"
-            );
-            resourceUrl = resourceResult.secure_url;
-          }
-
-          const payload = {
-            title: resourceData.title,
-            type: resourceData.type,
-            url: resourceUrl,
-          };
-
-          const res = await axios.post(
-            `${API_BASE_URL}/course/add-lecture-resource/${courseId}/${sectionId}/${lectureId}`,
-            payload,
-            {
+            `${API_BASE_URL}/course/publish-course/${courseId}`,
+            {},
+            { 
               headers: { Authorization: `Bearer ${get().instructorToken}` },
               withCredentials: true,
             }
           );
-
-          toast.success("Resource added successfully");
-          return { success: true, course: res.data.course };
-        } catch (error) {
-          console.error(
-            "Add lecture resource error:",
-            error.message,
-            error.response?.data
-          );
-          toast.error(
-            error.response?.data?.message ||
-              error.message ||
-              "Failed to add resource"
-          );
-          return {
-            success: false,
-            message: error.response?.data?.message || error.message,
-          };
-        } finally {
-          set({ isLoading: false });
-        }
-      },
-
-      publishCourse: async (courseId, router) => {
-        set({ isLoading: true });
-        try {
-          await axios.post(
-            `${API_BASE_URL}/course/publish-course/${courseId}`,
-            {},
-            { headers: { Authorization: `Bearer ${get().instructorToken}` } }
-          );
+          const publishResult = res.data.data || res.data;
           toast.success("Course submitted for review");
-          router.push("/instructor/courses");
-          return { success: true };
+          router.push("/instructor/dashboard/courses");
+          return { success: true, course: publishResult.course };
         } catch (error) {
           console.error(
             "Publish course error:",
@@ -297,59 +832,10 @@ const useInstructorStore = create(
         }
       },
 
-      fetchSuggestedCategoriesTags: async () => {
-        try {
-          const res = await axios.get(
-            `${API_BASE_URL}/course/suggested-categories-tags`,
-            {
-              headers: { Authorization: `Bearer ${get().instructorToken}` },
-            }
-          );
-          return res.data;
-        } catch (error) {
-          console.error(
-            "Fetch suggested categories error:",
-            error.response?.data || error.message
-          );
-          return { success: false, categories: [], tags: [] };
-        }
-      },
-
-      fetchCourses: async (params = {}) => {
-        set({ isLoading: true });
-        try {
-          const res = await axios.get(
-            `${API_BASE_URL}/course/get-instructor-courses`,
-            {
-              params,
-              headers: { Authorization: `Bearer ${get().instructorToken}` },
-              withCredentials: true,
-            }
-          );
-          set({
-            courses: res.data.courses || [],
-            totalCourses: res.data.total || 0,
-          });
-          return { success: true, courses: res.data.courses || [] };
-        } catch (error) {
-          console.error(
-            "Fetch courses error:",
-            error.message,
-            error.response?.data
-          );
-          const message =
-            error.response?.data?.message || "Failed to fetch courses";
-          toast.error(message);
-          return { success: false, message, courses: [] };
-        } finally {
-          set({ isLoading: false });
-        }
-      },
-
       deleteCourse: async (courseId) => {
         set({ isLoading: true });
         try {
-          const res = await axios.delete(
+          await axios.delete(
             `${API_BASE_URL}/course/delete-course/${courseId}`,
             {
               headers: { Authorization: `Bearer ${get().instructorToken}` },
@@ -376,95 +862,6 @@ const useInstructorStore = create(
         }
       },
 
-      loadDashboardAnalytics: async (instructorId) => {
-        set({ isLoading: true });
-        try {
-          const res = await axios.get(
-            `${API_BASE_URL}/analytics/instructor-dashboard/${instructorId}`,
-            {
-              headers: { Authorization: `Bearer ${get().instructorToken}` },
-              withCredentials: true,
-            }
-          );
-          set({ dashboardStats: res.data.stats || {} });
-          return { success: true, stats: res.data.stats || {} };
-        } catch (error) {
-          console.error(
-            "Load dashboard analytics error:",
-            error.message,
-            error.response?.data
-          );
-          const message =
-            error.response?.data?.message || "Failed to load analytics";
-          toast.error(message);
-          return { success: false, message };
-        } finally {
-          set({ isLoading: false });
-        }
-      },
-
-      createWithdrawal: async (amount, withdrawMethod) => {
-        set({ isLoading: true });
-        try {
-          const res = await axios.post(
-            `${API_BASE_URL}/instructor-withdraw/create-instructor-withdraw-request`,
-            { amount, withdrawMethod },
-            {
-              headers: { Authorization: `Bearer ${get().instructorToken}` },
-              withCredentials: true,
-            }
-          );
-          set((state) => ({
-            withdrawals: [res.data.withdraw, ...state.withdrawals],
-          }));
-          toast.success("Withdrawal request created successfully!");
-          return { success: true, withdraw: res.data.withdraw };
-        } catch (error) {
-          console.error(
-            "Create withdrawal error:",
-            error.message,
-            error.response?.data
-          );
-          const message =
-            error.response?.data?.message || "Failed to create withdrawal";
-          toast.error(message);
-          return { success: false, message };
-        } finally {
-          set({ isLoading: false });
-        }
-      },
-
-      fetchWithdrawals: async (params = {}) => {
-        set({ isLoading: true });
-        try {
-          const res = await axios.get(
-            `${API_BASE_URL}/instructor-withdraw/get-my-instructor-withdrawals`,
-            {
-              params,
-              headers: { Authorization: `Bearer ${get().instructorToken}` },
-              withCredentials: true,
-            }
-          );
-          set({
-            withdrawals: res.data.withdrawals || [],
-            totalWithdrawals: res.data.total || 0,
-          });
-          return { success: true, withdrawals: res.data.withdrawals || [] };
-        } catch (error) {
-          console.error(
-            "Fetch withdrawals error:",
-            error.message,
-            error.response?.data
-          );
-          const message =
-            error.response?.data?.message || "Failed to fetch withdrawals";
-          toast.error(message);
-          return { success: false, message, withdrawals: [] };
-        } finally {
-          set({ isLoading: false });
-        }
-      },
-
       signupInstructor: async (instructorData, router) => {
         set({ isLoading: true });
         try {
@@ -486,6 +883,22 @@ const useInstructorStore = create(
             );
           }
 
+          const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+          if (!emailRegex.test(instructorData.email)) {
+            throw new Error("Please enter a valid email address");
+          }
+
+          if (instructorData.password.length < 8) {
+            throw new Error("Password must be at least 8 characters long");
+          }
+
+          if (
+            !instructorData.phoneNumber.number ||
+            instructorData.phoneNumber.number.length < 10
+          ) {
+            throw new Error("Please enter a valid phone number");
+          }
+
           const formData = new FormData();
           formData.append("fullname", JSON.stringify(instructorData.fullname));
           formData.append("email", instructorData.email);
@@ -494,6 +907,7 @@ const useInstructorStore = create(
             "phoneNumber",
             JSON.stringify(instructorData.phoneNumber)
           );
+
           if (instructorData.bio) formData.append("bio", instructorData.bio);
           if (instructorData.expertise && instructorData.expertise.length > 0) {
             formData.append(
@@ -578,7 +992,9 @@ const useInstructorStore = create(
             instructorToken: token,
             isInstructor: instructor.approvalStatus.isInstructorApproved,
           });
-          localStorage.setItem("instructor_token", token);
+          if (typeof window !== "undefined") {
+            localStorage.setItem("instructor_token", token);
+          }
           toast.success("Instructor account verified successfully!");
           router.push("/instructor/dashboard");
           return { success: true };
@@ -613,135 +1029,10 @@ const useInstructorStore = create(
             error.message,
             error.response?.data
           );
-            const message =
-              error.response?.data?.message || "Failed to resend OTP.";
+          const message =
+            error.response?.data?.message || "Failed to resend OTP.";
           toast.error(error.message);
           return { success: false, message };
-        } finally {
-          set({ isLoading: false });
-        }
-      },
-
-      loginInstructor: async (email, password, router) => {
-        set({ isLoading: true });
-        try {
-          const res = await axios.post(
-            `${API_BASE_URL}/instructor/login-instructor`,
-            { email, password: password },
-            { withCredentials: true },
-          )
-            const { instructor, token } = res.data;
-            set({
-              instructor: instructor,
-              instructorToken: token,
-              isInstructor: instructor.approvalStatus.isInstructorApproved,
-            });
-            localStorage.setItem("instructor_token", token);
-            toast.success("Instructor login successful!");
-            router.push("/instructor/dashboard");
-            return { success: true };
-          } catch (error) {
-            console.error(
-              "Instructor login error:",
-              error.message,
-              error.response?.data
-            );
-            const message =
-              error.response?.data?.message || "Instructor login failed.";
-            toast.error(message);
-            return { success: false, message };
-          } finally {
-            set({ isLoading: false });
-          }
-        },
-
-      logoutInstructor: async (router) => {
-        set({ isLoading: true });
-        try {
-          await axios.get(
-            `${API_BASE_URL}/instructor/instructor-logout`,
-            {
-              withCredentials: true,
-            }
-          );
-          set({
-            instructor: null,
-            instructorToken: null,
-            isInstructor: false,
-            dashboardStats: null,
-            withdrawals: [],
-            courses: [],
-            totalCourses: 0,
-          });
-          localStorage.removeItem("instructor_token");
-          toast.success("Instructor logged out successfully!");
-          router.push("/instructor/login");
-          return { success: true };
-        } catch (error) {
-          console.error(
-            "Instructor logout error:",
-            error.message,
-            error.response?.data
-          );
-          const message =
-            error.response?.data?.message || "Instructor logout failed.";
-          toast.error(message);
-          return { success: false, message };
-        } finally {
-          set({ isLoading: false });
-        }
-      },
-
-      loadInstructor: async () => {
-        set({ isLoading: true });
-        try {
-          const currentToken =
-            get().instructorToken || localStorage.getItem("instructor_token");
-          if (!currentToken) {
-            set({
-              instructor: null,
-              instructorToken: null,
-              isInstructor: false,
-            });
-            return { success: false, message: "No instructor token available" };
-          }
-          const res = await axios.get(
-            `${API_BASE_URL}/instructor/get-instructor`,
-            {
-              headers: { Authorization: `Bearer ${currentToken}` },
-              withCredentials: true,
-            }
-          );
-          set({
-            instructor: res.data.instructor,
-            instructorToken: currentToken,
-            isInstructor:
-              res.data.instructor.approvalStatus.isInstructorApproved,
-          });
-          localStorage.setItem("instructor_token", currentToken);
-          return { success: true, instructor: res.data.instructor };
-        } catch (error) {
-          console.error(
-            "Load instructor error:",
-            error.message,
-            error.response?.data
-          );
-          if (
-            error.response?.status === 401 ||
-            error.response?.status === 404
-          ) {
-            set({
-              instructor: null,
-              instructorToken: null,
-              isInstructor: false,
-            });
-            localStorage.removeItem("instructor_token");
-          }
-          return {
-            success: false,
-            message:
-              error.response?.data?.message || "Failed to load instructor",
-          };
         } finally {
           set({ isLoading: false });
         }
@@ -775,13 +1066,13 @@ const useInstructorStore = create(
       resetInstructorPassword: async (email, otp, password, router) => {
         set({ isLoading: true });
         try {
-          const res = await axios.post(
+          await axios.post(
             `${API_BASE_URL}/instructor/reset-password`,
             { email, otp, password },
             { withCredentials: true }
           );
           toast.success("Password reset successfully!");
-          router.push("/instructor/login");
+          router.push("/instructor/auth/login");
           return { success: true };
         } catch (error) {
           console.error(
@@ -793,6 +1084,97 @@ const useInstructorStore = create(
             error.response?.data?.message || "Failed to reset password.";
           toast.error(message);
           return { success: false, message };
+        } finally {
+          set({ isLoading: false });
+        }
+      },
+
+      fetchSuggestedCategoriesTags: async () => {
+        try {
+          const res = await axios.get(
+            `${API_BASE_URL}/course/categories`,
+            {
+              headers: { Authorization: `Bearer ${get().instructorToken}` },
+              withCredentials: true,
+            }
+          );
+          const categoriesData = res.data.data || res.data;
+          return { success: true, categories: categoriesData };
+        } catch (error) {
+          console.error(
+            "Fetch suggested categories error:",
+            error.response?.data || error.message
+          );
+          return { success: false, categories: [], tags: [] };
+        }
+      },
+
+      getCourseLevels: async () => {
+        try {
+          const res = await axios.get(
+            `${API_BASE_URL}/course/levels`,
+            {
+              headers: { Authorization: `Bearer ${get().instructorToken}` },
+              withCredentials: true,
+            }
+          );
+          const levelsData = res.data.data || res.data;
+          return { success: true, levels: levelsData };
+        } catch (error) {
+          console.error(
+            "Fetch course levels error:",
+            error.response?.data || error.message
+          );
+          return { success: false, levels: [] };
+        }
+      },
+
+      getCourseLanguages: async () => {
+        try {
+          const res = await axios.get(
+            `${API_BASE_URL}/course/languages`,
+            {
+              headers: { Authorization: `Bearer ${get().instructorToken}` },
+              withCredentials: true,
+            }
+          );
+          const languagesData = res.data.data || res.data;
+          return { success: true, languages: languagesData };
+        } catch (error) {
+          console.error(
+            "Fetch course languages error:",
+            error.response?.data || error.message
+          );
+          return { success: false, languages: [] };
+        }
+      },
+
+      bulkUpdateCourseStatus: async (courseIds, status) => {
+        set({ isLoading: true });
+        try {
+          const res = await axios.put(
+            `${API_BASE_URL}/course/bulk-update-course-status`,
+            { courseIds, status },
+            {
+              headers: { Authorization: `Bearer ${get().instructorToken}` },
+              withCredentials: true,
+            }
+          );
+          const result = res.data.data || res.data;
+          toast.success("Courses updated successfully");
+          return { success: true, result };
+        } catch (error) {
+          console.error(
+            "Bulk update course status error:",
+            error.response?.data || error.message
+          );
+          toast.error(
+            error.response?.data?.message || "Failed to update courses"
+          );
+          return {
+            success: false,
+            message: error.response?.data?.message || error.message,
+          };
         } finally {
           set({ isLoading: false });
         }
@@ -809,3 +1191,4 @@ const useInstructorStore = create(
 );
 
 export default useInstructorStore;
+

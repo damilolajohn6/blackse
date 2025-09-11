@@ -27,6 +27,7 @@ const poppins = Poppins(
     weight: ["100", "200", "300", "400", "500", "600", "700", "800"]
   },
 )
+
 const jost = Jost(
   {
     subsets: ["latin"],
@@ -78,9 +79,12 @@ const NewServicePage = () => {
         price: parseFloat(formData.price),
       };
 
+      console.log('service data', serviceData)
+
       await addService(serviceData);
+
       // await addServices("POST", "/service-provider/add-service-offered", { body: serviceData });
-      // toast.success("Service created successfully!");
+      toast.success("Service created successfully!");
       // router.push("/service-provider/services");
     } catch (error) {
       toast.error(error.message || "Failed to create service");
@@ -162,6 +166,7 @@ const NewServicePage = () => {
             {activeTab === "form" && (
               <ServiceForm
                 formData={formData}
+                setFormData={setFormData}
                 onInputChange={handleInputChange}
                 onSubmit={handleSubmit}
                 isLoading={isLoading}

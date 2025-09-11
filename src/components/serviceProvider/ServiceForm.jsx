@@ -1,6 +1,5 @@
 "use client"
-
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   Plus,
   X,
@@ -21,19 +20,37 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
-  SelectGroup,
-  SelectLabel,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
 
-const ServiceForm = ({ formData, onInputChange, onSubmit, isLoading }) => {
+const ServiceForm = ({ formData, setFormData, onInputChange, onSubmit, isLoading }) => {
   const [imageUploading, setImageUploading] = useState(false);
   const [newTag, setNewTag] = useState("");
   const [newRequirement, setNewRequirement] = useState("");
   const [newFeature, setNewFeature] = useState("");
+  const [progress, setProgress] = useState(0);
+  const containerRef = useRef(null);
+  const [containerDimensions, setContainerDimensions] = useState({ width: 0, height: 0 });
+
+  useEffect(() => {
+    const updateDimensions = () => {
+      if (containerRef.current) {
+        const { offsetWidth, offsetHeight } = containerRef.current;
+        setContainerDimensions({ width: offsetWidth, height: offsetHeight });
+      }
+    };
+
+    updateDimensions();
+    window.addEventListener('resize', updateDimensions);
+
+    return () => window.removeEventListener('resize', updateDimensions);
+  }, []);
+
+  // Calculate the perimeter of the rectangle
+  const perimeter = 2 * (containerDimensions.width + containerDimensions.height);
+  const progressLength = (progress / 100) * perimeter;
 
   const serviceCategories = [
     "Plumbing",
@@ -63,19 +80,44 @@ const ServiceForm = ({ formData, onInputChange, onSubmit, isLoading }) => {
     if (files.length === 0) return;
 
     setImageUploading(true);
+    setProgress(0);
+
     try {
-      const uploadPromises = files.map((file) =>
-        uploadToCloudinary(file, "services")
-      );
-      const uploadedImages = await Promise.all(uploadPromises);
+      const uploadedImages = [];
+
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        // Update overall progress based on file completion
+        const baseProgress = (i / files.length) * 100;
+        const uploadedImage = await uploadToCloudinary(
+          file,
+          "services",
+          "image",
+          (percent) => {
+            // Calculate overall progress: completed files + current file progress
+            const currentFileProgress = (percent / 100) * (100 / files.length);
+            const totalProgress = baseProgress + currentFileProgress;
+            setProgress(Math.round(totalProgress));
+          }
+        );
+
+        uploadedImages.push(uploadedImage);
+      }
 
       const imageUrls = uploadedImages.map((img) => img.url);
+
+      setFormData((prev) => ({
+        ...prev,
+        images: [...prev.images, ...imageUrls],
+      }));
       onInputChange("images", [...formData.images, ...imageUrls]);
-      toast.success("Images uploaded successfully");
+      toast.success(`${files.length} image${files.length > 1 ? 's' : ''} uploaded successfully`);
     } catch (error) {
+      console.error("Upload error:", error);
       toast.error("Failed to upload images");
     } finally {
       setImageUploading(false);
+      setProgress(0); // Reset to 0 instead of 100
     }
   };
 
@@ -133,7 +175,7 @@ const ServiceForm = ({ formData, onInputChange, onSubmit, isLoading }) => {
   };
 
   return (
-    <form onSubmit={onSubmit} className="space-y-8">
+    <form onSubmit={(e) => formData.images ? onSubmit(e) : alert('Wait for image upload')} className="space-y-8">
       {/* Basic Information */}
       <div className="bg-gray-50 rounded-lg p-6">
         <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
@@ -258,7 +300,7 @@ const ServiceForm = ({ formData, onInputChange, onSubmit, isLoading }) => {
         </h3>
 
         <div className="space-y-4">
-          <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+          {/* <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
             <Upload className="h-12 w-12 text-gray-400 mx-auto mb-4" />
             <div className="text-sm text-gray-600">
               <Label htmlFor="images" className="cursor-pointer">
@@ -279,6 +321,72 @@ const ServiceForm = ({ formData, onInputChange, onSubmit, isLoading }) => {
             <p className="text-xs text-gray-500">
               PNG, JPG, GIF up to 10MB each
             </p>
+          </div> */}
+          <div
+            ref={containerRef}
+            className="relative border-2 border-dashed border-gray-300 rounded-lg p-6 text-center overflow-hidden"
+          >
+            {/* Animated Progress Border */}
+            {imageUploading && (
+              <svg
+                className="absolute inset-0 w-full h-full pointer-events-none"
+                style={{ zIndex: 1 }}
+              >
+                <defs>
+                  <linearGradient id="progressGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                    <stop offset="0%" stopColor="#4f46e5" />
+                    <stop offset="100%" stopColor="#7c3aed" />
+                  </linearGradient>
+                </defs>
+                <rect
+                  x="2"
+                  y="2"
+                  width={containerDimensions.width-7}
+                  height={containerDimensions.height-7}
+                  rx="6"
+                  ry="6"
+                  fill="none"
+                  stroke="url(#progressGradient)"
+                  strokeWidth="2"
+                  strokeDasharray={perimeter}
+                  strokeDashoffset={perimeter - progressLength}
+                  style={{
+                    transition: 'stroke-dashoffset 0.3s ease-in-out',
+                    transform: 'rotate(0deg)',
+                    transformOrigin: 'center',
+                  }}
+                />
+              </svg>
+            )}
+
+            {/* Content */}
+            <div className="relative z-10">
+              <Upload className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+              <div className="text-sm text-gray-600">
+                <label htmlFor="images" className="cursor-pointer">
+                  <span className="font-medium text-indigo-600 hover:text-indigo-500">
+                    Click to upload
+                  </span>
+                  <span> or drag and drop</span>
+                </label>
+                <input
+                  id="images"
+                  type="file"
+                  multiple
+                  accept="image/*"
+                  onChange={handleImageUpload}
+                  className="sr-only"
+                />
+              </div>
+              <p className="text-xs text-gray-500">PNG, JPG, GIF up to 10MB each</p>
+
+              {/* Progress Text */}
+              {imageUploading && (
+                <p className="absolute botton-5 left-0 right-0 text-xs text-indigo-600 font-medium">
+                  Uploading... {progress}%
+                </p>
+              )}
+            </div>
           </div>
 
           {formData.images.length > 0 && (

@@ -12,7 +12,7 @@ const InstructorInfo = () => {
   useEffect(() => {
     if (!isInstructor && !isLoading) {
       toast.error("Please login to your shop");
-      router.push("/instructor/login");
+      router.push("/instructor/auth/login");
     }
   }, [isInstructor, isLoading, router]);
 
@@ -59,7 +59,7 @@ const InstructorInfo = () => {
       </div>
       <div className="mt-6">
         <button
-          onClick={() => router.push("/instructor/profile")}
+          onClick={() => router.push("/instructor/dashboard/profile")}
           className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
         >
           Instructor Profile

@@ -14,11 +14,11 @@ export default function InstructorAuthProvider({ children }) {
 
   // Define public routes that don't require authentication
   const publicRoutes = [
-    "/instructor/login",
-    "/instructor/register",
-    "/instructor/register/activation",
-    "/instructor/forgot-password",
-    "/instructor/reset-password",
+    "/instructor/auth/login",
+    "/instructor/auth/register",
+    "/instructor/auth/register/activation",
+    "/instructor/auth/forgot-password",
+    "/instructor/auth/reset-password",
   ];
 
   useEffect(() => {
@@ -43,6 +43,8 @@ export default function InstructorAuthProvider({ children }) {
         const result = await checkInstructorAuth({ signal: controller.signal });
         clearTimeout(timeoutId);
 
+        console.log('result', result);
+
         if (!result.success) {
           setAuthError(
             result.message || "Failed to authenticate. Please log in again."
@@ -50,7 +52,7 @@ export default function InstructorAuthProvider({ children }) {
           toast.error("Please log in to access this page", {
             toastId: "auth-error",
           });
-          router.push("/instructor/login");
+          router.push("/instructor/auth/login");
         }
       } catch (error) {
         console.error("InstructorAuthProvider: Authentication error", {
@@ -69,7 +71,7 @@ export default function InstructorAuthProvider({ children }) {
             toastId: "auth-error",
           });
         }
-        router.push("/instructor/login");
+        router.push("/instructor/auth/login");
       }
     };
 
@@ -89,7 +91,7 @@ export default function InstructorAuthProvider({ children }) {
       <div className="flex justify-center items-center min-h-screen">
         <div className="text-red-600 text-center">
           <p>{authError}</p>
-          <a href="/instructor/login" className="text-blue-600 underline">
+          <a href="/instructor/auth/login" className="text-blue-600 underline">
             Go to Login
           </a>
         </div>

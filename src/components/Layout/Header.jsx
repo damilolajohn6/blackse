@@ -55,7 +55,7 @@ export default function Header() {
               </Link>
             </B>
             <B className={`!rounded-[12px]`}>
-              <Link href="/instructor/login">
+              <Link href="/instructor/auth/login">
                 <h1 className="text-[#fff] flex items-center text-sm">
                   Become a Tutor <IoIosArrowForward className="ml-1" />
                 </h1>
@@ -112,7 +112,7 @@ export default function Header() {
               </Link>
             </div>
             <div className={`${styles.button} !rounded-[12px]`}>
-              <Link href="/instructor/login">
+              <Link href="/instructor/auth/login">
                 <h1 className="text-[#fff] flex items-center text-sm">
                   Become a Tutor <IoIosArrowForward className="ml-1" />
                 </h1>
