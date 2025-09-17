@@ -85,7 +85,7 @@ const seatingTypes = [
 
 const CreateEventForm = () => {
   const { seller, sellerToken, isSeller } = useShopStore();
-  const { createEvent, isLoading, testCloudinary, publishEvent } = useEventStore();
+  const { createEvent, isLoading, publishEvent } = useEventStore();
   const { getMyVenues, venues } = useVenueStore();
   const router = useRouter();
 
@@ -191,13 +191,11 @@ const CreateEventForm = () => {
     slug: ""
   });
 
-  const [cloudinaryStatus, setCloudinaryStatus] = useState(null);
 
   // Load seller's venues on component mount
   useEffect(() => {
     if (isSeller && sellerToken) {
       loadVenues();
-      testCloudinaryConfig();
     }
   }, [isSeller, sellerToken]);
 
@@ -213,17 +211,6 @@ const CreateEventForm = () => {
     }
   };
 
-  const testCloudinaryConfig = async () => {
-    try {
-      if (sellerToken) {
-        const result = await testCloudinary(sellerToken);
-        setCloudinaryStatus(result.success);
-      }
-    } catch (error) {
-      console.warn("Cloudinary test failed:", error.message);
-      setCloudinaryStatus(false);
-    }
-  };
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -403,12 +390,6 @@ const CreateEventForm = () => {
         Create Advanced Event
       </Typography>
 
-      {/* Cloudinary Status Alert */}
-      {cloudinaryStatus === false && (
-        <Alert severity="warning" className="mb-6">
-          Cloudinary configuration issue detected. Image uploads may fail. Please check your configuration.
-        </Alert>
-      )}
 
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Basic Information */}
