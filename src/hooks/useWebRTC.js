@@ -1,10 +1,11 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 import { useState, useEffect, useRef, useCallback } from 'react';
 import useInstructorStore from '@/store/instructorStore';
 import { toast } from 'react-toastify';
 
 export const useWebRTC = (liveClassId) => {
   const { 
-    activeLiveClass, 
+    //activeLiveClass, 
     joinLiveClass, 
     leaveLiveClass,
     muteParticipant,
