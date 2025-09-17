@@ -387,7 +387,7 @@ const CreateEventForm = () => {
   return (
     <div className="w-full max-w-6xl mx-auto p-6 md:p-8">
       <Typography variant="h4" className="text-2xl font-semibold text-gray-900 pb-6">
-        Create Advanced Event
+        Create Event
       </Typography>
 
 
