@@ -2,7 +2,12 @@ import ShopDashboardSideBar from '@/components/shop/ShopDashboardSidebar';
 import ViewEvent from '@/components/shop/ViewEvent';
 
 
-const ViewEventPage = () => {
+const ViewEventPage = async ({ params }) => {
+  console.log("ViewEventPage params:", params);
+  
+  // Await the params to get the actual values
+  const resolvedParams = await params;
+  
   return (
     <div>
       <div className="">
@@ -10,7 +15,7 @@ const ViewEventPage = () => {
           <div className="w-[80px] 800px:w-[330px]">
             <ShopDashboardSideBar active={5} />
           </div>
-          <ViewEvent />
+          <ViewEvent eventId={resolvedParams?.id} />
         </div>
       </div>
     </div>

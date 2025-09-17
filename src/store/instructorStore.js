@@ -12,8 +12,9 @@ const getCookie = (name) => {
   return null;
 };
 
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_SERVER || "http://localhost:8000/api/v2";
+import { API_CONFIG } from "@/config/api";
+
+const API_BASE_URL = API_CONFIG.BASE_URL;
 
 const uploadToCloudinary = async (file, folder, resourceType) => {
   const formData = new FormData();
@@ -48,6 +49,10 @@ const useInstructorStore = create(
       withdrawals: [],
       courses: [],
       totalCourses: 0,
+      liveClasses: [],
+      totalLiveClasses: 0,
+      activeLiveClass: null,
+      liveClassStats: null,
 
       // Utility methods
       isTokenValid: () => {
@@ -77,6 +82,10 @@ const useInstructorStore = create(
           withdrawals: [],
           courses: [],
           totalCourses: 0,
+          liveClasses: [],
+          totalLiveClasses: 0,
+          activeLiveClass: null,
+          liveClassStats: null,
         });
         if (typeof window !== "undefined") {
           localStorage.removeItem("instructor_token");
@@ -126,6 +135,13 @@ const useInstructorStore = create(
 
       loadInstructor: async () => {
         set({ isLoading: true });
+        
+        // Set a timeout to prevent loading from getting stuck
+        const timeoutId = setTimeout(() => {
+          console.warn("Load instructor timeout - forcing loading to false");
+          set({ isLoading: false });
+        }, 10000); // 10 second timeout
+
         try {
           const currentToken =
             get().instructorToken ||
@@ -151,7 +167,7 @@ const useInstructorStore = create(
               instructorToken: null,
               isInstructor: false,
             });
-            return { success: false, message: "No instructor token available" };
+            return { success: false, message: "No instructor token available", isInstructor: false };
           }
 
           const res = await axios.get(
@@ -159,6 +175,7 @@ const useInstructorStore = create(
             {
               headers: { Authorization: `Bearer ${currentToken}` },
               withCredentials: true,
+              timeout: API_CONFIG.TIMEOUT,
             }
           );
 
@@ -208,13 +225,22 @@ const useInstructorStore = create(
             if (typeof window !== "undefined") {
               localStorage.removeItem("instructor_token");
             }
+          } else {
+            // For other errors, also reset instructor data to prevent inconsistent state
+            set({
+              instructor: null,
+              instructorToken: null,
+              isInstructor: false,
+            });
           }
           return {
             success: false,
             message:
               error.response?.data?.message || "Failed to load instructor",
+            isInstructor: false,
           };
         } finally {
+          clearTimeout(timeoutId);
           set({ isLoading: false });
         }
       },
@@ -388,14 +414,24 @@ const useInstructorStore = create(
         set({ isLoading: true });
         try {
           console.log("Loading dashboard analytics with period:", period);
+          
+          // Check if we have a valid token
+          const token = get().instructorToken;
+          if (!token) {
+            console.warn("No instructor token available for dashboard analytics");
+            return { success: false, message: "No authentication token" };
+          }
+
           const res = await axios.get(
             `${API_BASE_URL}/course/instructor-dashboard`,
             {
               params: { period },
-              headers: { Authorization: `Bearer ${get().instructorToken}` },
+              headers: { Authorization: `Bearer ${token}` },
               withCredentials: true,
+              timeout: API_CONFIG.TIMEOUT,
             }
           );
+          
           console.log("Dashboard analytics response:", res.data);
           const dashboardData = res.data.data || res.data;
           
@@ -445,8 +481,24 @@ const useInstructorStore = create(
             error.message,
             error.response?.data
           );
-          const message =
-            error.response?.data?.message || "Failed to load analytics";
+          
+          // Handle specific error types
+          if (error.code === 'NETWORK_ERROR' || error.message?.includes('Network Error')) {
+            console.warn("Network error - backend may be unavailable");
+            return { success: false, message: "Network error - please check your connection" };
+          }
+          
+          if (error.response?.status === 401) {
+            console.warn("Authentication failed - token may be expired");
+            return { success: false, message: "Authentication failed" };
+          }
+          
+          if (error.response?.status === 404) {
+            console.warn("Dashboard endpoint not found");
+            return { success: false, message: "Dashboard service unavailable" };
+          }
+          
+          const message = error.response?.data?.message || "Failed to load analytics";
           return { success: false, message };
         } finally {
           set({ isLoading: false });
@@ -455,11 +507,18 @@ const useInstructorStore = create(
 
       getInstructorStats: async () => {
         try {
+          const token = get().instructorToken;
+          if (!token) {
+            console.warn("No instructor token available for stats");
+            return { success: false, message: "No authentication token" };
+          }
+
           const res = await axios.get(
             `${API_BASE_URL}/instructor/instructor-stats`,
             {
-              headers: { Authorization: `Bearer ${get().instructorToken}` },
+              headers: { Authorization: `Bearer ${token}` },
               withCredentials: true,
+              timeout: API_CONFIG.TIMEOUT,
             }
           );
           const stats = res.data.data || res.data.stats || res.data;
@@ -470,6 +529,13 @@ const useInstructorStore = create(
             error.message,
             error.response?.data
           );
+          
+          // Handle specific error types
+          if (error.code === 'NETWORK_ERROR' || error.message?.includes('Network Error')) {
+            console.warn("Network error - backend may be unavailable");
+            return { success: false, message: "Network error - please check your connection" };
+          }
+          
           // Return default stats instead of failing
           const defaultStats = {
             totalCourses: 0,
@@ -583,12 +649,19 @@ const useInstructorStore = create(
 
       fetchCourses: async (params = {}) => {
         try {
+          const token = get().instructorToken;
+          if (!token) {
+            console.warn("No instructor token available for courses");
+            return { success: false, message: "No authentication token", courses: [] };
+          }
+
           const res = await axios.get(
             `${API_BASE_URL}/course/get-instructor-courses`,
             {
               params,
-              headers: { Authorization: `Bearer ${get().instructorToken}` },
+              headers: { Authorization: `Bearer ${token}` },
               withCredentials: true,
+              timeout: API_CONFIG.TIMEOUT,
             }
           );
           const coursesData = res.data.data || res.data;
@@ -603,8 +676,14 @@ const useInstructorStore = create(
             error.message,
             error.response?.data
           );
-          const message =
-            error.response?.data?.message || "Failed to fetch courses";
+          
+          // Handle specific error types
+          if (error.code === 'NETWORK_ERROR' || error.message?.includes('Network Error')) {
+            console.warn("Network error - backend may be unavailable");
+            return { success: false, message: "Network error - please check your connection", courses: [] };
+          }
+          
+          const message = error.response?.data?.message || "Failed to fetch courses";
           return { success: false, message, courses: [] };
         }
       },
@@ -1178,6 +1257,424 @@ const useInstructorStore = create(
         } finally {
           set({ isLoading: false });
         }
+      },
+
+      // ===== LIVE CLASS METHODS =====
+      
+      createLiveClass: async (liveClassData, router) => {
+        set({ isLoading: true });
+        try {
+          const res = await axios.post(
+            `${API_BASE_URL}/course/create-live-class`,
+            liveClassData,
+            {
+              headers: { Authorization: `Bearer ${get().instructorToken}` },
+              withCredentials: true,
+            }
+          );
+          const result = res.data.data || res.data;
+          toast.success("Live class created successfully");
+          router.push("/instructor/dashboard/live-classes");
+          return { success: true, liveClass: result.liveClass };
+        } catch (error) {
+          console.error(
+            "Create live class error:",
+            error.response?.data || error.message
+          );
+          toast.error(
+            error.response?.data?.message || "Failed to create live class"
+          );
+          return {
+            success: false,
+            message: error.response?.data?.message || error.message,
+          };
+        } finally {
+          set({ isLoading: false });
+        }
+      },
+
+      fetchLiveClasses: async (params = {}) => {
+        try {
+          const res = await axios.get(
+            `${API_BASE_URL}/course/get-instructor-live-classes`,
+            {
+              params,
+              headers: { Authorization: `Bearer ${get().instructorToken}` },
+              withCredentials: true,
+            }
+          );
+          const liveClassesData = res.data.data || res.data;
+          set({
+            liveClasses: liveClassesData.liveClasses || [],
+            totalLiveClasses: liveClassesData.total || 0,
+          });
+          return { success: true, liveClasses: liveClassesData.liveClasses || [] };
+        } catch (error) {
+          console.error(
+            "Fetch live classes error:",
+            error.message,
+            error.response?.data
+          );
+          const message =
+            error.response?.data?.message || "Failed to fetch live classes";
+          return { success: false, message, liveClasses: [] };
+        }
+      },
+
+      getLiveClassById: async (liveClassId) => {
+        try {
+          const res = await axios.get(
+            `${API_BASE_URL}/course/get-live-class/${liveClassId}`,
+            {
+              headers: { Authorization: `Bearer ${get().instructorToken}` },
+              withCredentials: true,
+            }
+          );
+          const liveClassData = res.data.data || res.data;
+          return { success: true, liveClass: liveClassData.liveClass };
+        } catch (error) {
+          console.error(
+            "Get live class error:",
+            error.message,
+            error.response?.data
+          );
+          const message =
+            error.response?.data?.message || "Failed to fetch live class";
+          return { success: false, message };
+        }
+      },
+
+      updateLiveClass: async (liveClassId, liveClassData) => {
+        set({ isLoading: true });
+        try {
+          const res = await axios.put(
+            `${API_BASE_URL}/course/update-live-class/${liveClassId}`,
+            liveClassData,
+            {
+              headers: { Authorization: `Bearer ${get().instructorToken}` },
+              withCredentials: true,
+            }
+          );
+          const result = res.data.data || res.data;
+          toast.success("Live class updated successfully");
+          return { success: true, liveClass: result.liveClass };
+        } catch (error) {
+          console.error(
+            "Update live class error:",
+            error.response?.data || error.message
+          );
+          toast.error(
+            error.response?.data?.message || "Failed to update live class"
+          );
+          return {
+            success: false,
+            message: error.response?.data?.message || error.message,
+          };
+        } finally {
+          set({ isLoading: false });
+        }
+      },
+
+      deleteLiveClass: async (liveClassId) => {
+        set({ isLoading: true });
+        try {
+          await axios.delete(
+            `${API_BASE_URL}/course/delete-live-class/${liveClassId}`,
+            {
+              headers: { Authorization: `Bearer ${get().instructorToken}` },
+              withCredentials: true,
+            }
+          );
+          set((state) => ({
+            liveClasses: state.liveClasses.filter((liveClass) => liveClass._id !== liveClassId),
+            totalLiveClasses: state.totalLiveClasses - 1,
+          }));
+          toast.success("Live class deleted successfully");
+          return { success: true };
+        } catch (error) {
+          console.error(
+            "Delete live class error:",
+            error.message,
+            error.response?.data
+          );
+          toast.error(
+            error.response?.data?.message || "Failed to delete live class"
+          );
+          return {
+            success: false,
+            message: error.response?.data?.message || "Failed to delete live class",
+          };
+        } finally {
+          set({ isLoading: false });
+        }
+      },
+
+      startLiveClass: async (liveClassId) => {
+        set({ isLoading: true });
+        try {
+          const res = await axios.post(
+            `${API_BASE_URL}/course/start-live-class/${liveClassId}`,
+            {},
+            {
+              headers: { Authorization: `Bearer ${get().instructorToken}` },
+              withCredentials: true,
+            }
+          );
+          const result = res.data.data || res.data;
+          set({ activeLiveClass: result.liveClass });
+          toast.success("Live class started successfully");
+          return { success: true, liveClass: result.liveClass };
+        } catch (error) {
+          console.error(
+            "Start live class error:",
+            error.response?.data || error.message
+          );
+          toast.error(
+            error.response?.data?.message || "Failed to start live class"
+          );
+          return {
+            success: false,
+            message: error.response?.data?.message || error.message,
+          };
+        } finally {
+          set({ isLoading: false });
+        }
+      },
+
+      endLiveClass: async (liveClassId) => {
+        set({ isLoading: true });
+        try {
+          const res = await axios.post(
+            `${API_BASE_URL}/course/end-live-class/${liveClassId}`,
+            {},
+            {
+              headers: { Authorization: `Bearer ${get().instructorToken}` },
+              withCredentials: true,
+            }
+          );
+          const result = res.data.data || res.data;
+          set({ activeLiveClass: null });
+          toast.success("Live class ended successfully");
+          return { success: true, liveClass: result.liveClass };
+        } catch (error) {
+          console.error(
+            "End live class error:",
+            error.response?.data || error.message
+          );
+          toast.error(
+            error.response?.data?.message || "Failed to end live class"
+          );
+          return {
+            success: false,
+            message: error.response?.data?.message || error.message,
+          };
+        } finally {
+          set({ isLoading: false });
+        }
+      },
+
+      joinLiveClass: async (liveClassId) => {
+        set({ isLoading: true });
+        try {
+          const res = await axios.post(
+            `${API_BASE_URL}/course/join-live-class/${liveClassId}`,
+            {},
+            {
+              headers: { Authorization: `Bearer ${get().instructorToken}` },
+              withCredentials: true,
+            }
+          );
+          const result = res.data.data || res.data;
+          set({ activeLiveClass: result.liveClass });
+          return { success: true, liveClass: result.liveClass, webrtcConfig: result.webrtcConfig };
+        } catch (error) {
+          console.error(
+            "Join live class error:",
+            error.response?.data || error.message
+          );
+          toast.error(
+            error.response?.data?.message || "Failed to join live class"
+          );
+          return {
+            success: false,
+            message: error.response?.data?.message || error.message,
+          };
+        } finally {
+          set({ isLoading: false });
+        }
+      },
+
+      leaveLiveClass: async (liveClassId) => {
+        set({ isLoading: true });
+        try {
+          await axios.post(
+            `${API_BASE_URL}/course/leave-live-class/${liveClassId}`,
+            {},
+            {
+              headers: { Authorization: `Bearer ${get().instructorToken}` },
+              withCredentials: true,
+            }
+          );
+          set({ activeLiveClass: null });
+          return { success: true };
+        } catch (error) {
+          console.error(
+            "Leave live class error:",
+            error.response?.data || error.message
+          );
+          toast.error(
+            error.response?.data?.message || "Failed to leave live class"
+          );
+          return {
+            success: false,
+            message: error.response?.data?.message || error.message,
+          };
+        } finally {
+          set({ isLoading: false });
+        }
+      },
+
+      getLiveClassAnalytics: async (liveClassId, period = "30d") => {
+        try {
+          const res = await axios.get(
+            `${API_BASE_URL}/course/live-class-analytics/${liveClassId}`,
+            {
+              params: { period },
+              headers: { Authorization: `Bearer ${get().instructorToken}` },
+              withCredentials: true,
+            }
+          );
+          const analytics = res.data.data || res.data;
+          return { success: true, analytics };
+        } catch (error) {
+          console.error(
+            "Get live class analytics error:",
+            error.message,
+            error.response?.data
+          );
+          const message =
+            error.response?.data?.message || "Failed to fetch live class analytics";
+          return { success: false, message };
+        }
+      },
+
+      getLiveClassStats: async () => {
+        try {
+          const res = await axios.get(
+            `${API_BASE_URL}/course/instructor-live-class-stats`,
+            {
+              headers: { Authorization: `Bearer ${get().instructorToken}` },
+              withCredentials: true,
+            }
+          );
+          const stats = res.data.data || res.data;
+          set({ liveClassStats: stats });
+          return { success: true, stats };
+        } catch (error) {
+          console.error(
+            "Get live class stats error:",
+            error.message,
+            error.response?.data
+          );
+          const defaultStats = {
+            totalLiveClasses: 0,
+            activeLiveClasses: 0,
+            totalParticipants: 0,
+            totalDuration: 0,
+            averageParticipants: 0,
+            completionRate: 0,
+          };
+          set({ liveClassStats: defaultStats });
+          return { success: true, stats: defaultStats };
+        }
+      },
+
+      getLiveClassParticipants: async (liveClassId) => {
+        try {
+          const res = await axios.get(
+            `${API_BASE_URL}/course/get-live-class-participants/${liveClassId}`,
+            {
+              headers: { Authorization: `Bearer ${get().instructorToken}` },
+              withCredentials: true,
+            }
+          );
+          const participants = res.data.data || res.data;
+          return { success: true, participants: participants.participants || [] };
+        } catch (error) {
+          console.error(
+            "Get live class participants error:",
+            error.message,
+            error.response?.data
+          );
+          const message =
+            error.response?.data?.message || "Failed to fetch participants";
+          return { success: false, message, participants: [] };
+        }
+      },
+
+      muteParticipant: async (liveClassId, participantId, mute = true) => {
+        try {
+          const res = await axios.post(
+            `${API_BASE_URL}/course/mute-participant/${liveClassId}`,
+            { participantId, mute },
+            {
+              headers: { Authorization: `Bearer ${get().instructorToken}` },
+              withCredentials: true,
+            }
+          );
+          const result = res.data.data || res.data;
+          toast.success(mute ? "Participant muted" : "Participant unmuted");
+          return { success: true, participant: result.participant };
+        } catch (error) {
+          console.error(
+            "Mute participant error:",
+            error.response?.data || error.message
+          );
+          toast.error(
+            error.response?.data?.message || "Failed to mute/unmute participant"
+          );
+          return {
+            success: false,
+            message: error.response?.data?.message || error.message,
+          };
+        }
+      },
+
+      removeParticipant: async (liveClassId, participantId) => {
+        try {
+          const res = await axios.post(
+            `${API_BASE_URL}/course/remove-participant/${liveClassId}`,
+            { participantId },
+            {
+              headers: { Authorization: `Bearer ${get().instructorToken}` },
+              withCredentials: true,
+            }
+          );
+          const result = res.data.data || res.data;
+          toast.success("Participant removed from live class");
+          return { success: true, participant: result.participant };
+        } catch (error) {
+          console.error(
+            "Remove participant error:",
+            error.response?.data || error.message
+          );
+          toast.error(
+            error.response?.data?.message || "Failed to remove participant"
+          );
+          return {
+            success: false,
+            message: error.response?.data?.message || error.message,
+          };
+        }
+      },
+
+      clearLiveClassData: () => {
+        set({
+          liveClasses: [],
+          totalLiveClasses: 0,
+          activeLiveClass: null,
+          liveClassStats: null,
+        });
       },
     }),
     {

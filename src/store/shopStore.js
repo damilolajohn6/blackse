@@ -140,15 +140,15 @@ const useShopStore = create(
           return { success: false, message: "No seller token available" };
         }
 
-        // Validate token before loading shop
-        const tokenValidation = await get().validateToken();
-        if (!tokenValidation.success) {
-          console.warn("loadShop: Token validation failed", {
-            message: tokenValidation.message,
-          });
-          get().logoutShop();
-          return tokenValidation;
-        }
+        // Skip token validation for now to prevent unnecessary logouts
+        // const tokenValidation = await get().validateToken();
+        // if (!tokenValidation.success) {
+        //   console.warn("loadShop: Token validation failed", {
+        //     message: tokenValidation.message,
+        //   });
+        //   get().logoutShop();
+        //   return tokenValidation;
+        // }
 
         try {
           console.debug("loadShop request:", {
@@ -174,6 +174,8 @@ const useShopStore = create(
             status: error.response?.status,
             data: error.response?.data,
           });
+          
+          // Only attempt token refresh for 401/403 errors
           if (
             error.response?.status === 401 ||
             error.response?.status === 403
@@ -209,7 +211,7 @@ const useShopStore = create(
                   status: retryError.response?.status,
                   data: retryError.response?.data,
                 });
-                get().logoutShop();
+                // Don't logout immediately, just return error
                 return {
                   success: false,
                   message:
@@ -221,11 +223,12 @@ const useShopStore = create(
               console.warn("loadShop: Token refresh failed", {
                 message: refreshResult.message,
               });
-              get().logoutShop();
+              // Don't logout immediately, just return error
               return refreshResult;
             }
           }
-          get().logoutShop();
+          
+          // For other errors, don't logout automatically
           return {
             success: false,
             message: error.response?.data?.message || "Failed to load shop",
@@ -251,14 +254,15 @@ const useShopStore = create(
           return { success: false, message: "No seller token available" };
         }
 
-        const tokenValidation = await get().validateToken();
-        if (!tokenValidation.success) {
-          console.warn("checkAuth: Token validation failed", {
-            message: tokenValidation.message,
-          });
-          get().logoutShop();
-          return tokenValidation;
-        }
+        // Skip token validation to prevent unnecessary logouts
+        // const tokenValidation = await get().validateToken();
+        // if (!tokenValidation.success) {
+        //   console.warn("checkAuth: Token validation failed", {
+        //     message: tokenValidation.message,
+        //   });
+        //   get().logoutShop();
+        //   return tokenValidation;
+        // }
 
         try {
           console.debug("checkAuth request:", {
@@ -284,6 +288,8 @@ const useShopStore = create(
             status: error.response?.status,
             data: error.response?.data,
           });
+          
+          // Only attempt token refresh for 401/403 errors
           if (
             error.response?.status === 401 ||
             error.response?.status === 403
@@ -322,7 +328,7 @@ const useShopStore = create(
                   status: retryError.response?.status,
                   data: retryError.response?.data,
                 });
-                get().logoutShop();
+                // Don't logout immediately, just return error
                 return {
                   success: false,
                   message:
@@ -334,11 +340,12 @@ const useShopStore = create(
               console.warn("checkAuth: Token refresh failed", {
                 message: refreshResult.message,
               });
-              get().logoutShop();
+              // Don't logout immediately, just return error
               return refreshResult;
             }
           }
-          get().logoutShop();
+          
+          // For other errors, don't logout automatically
           return {
             success: false,
             message: error.response?.data?.message || "Authentication failed",

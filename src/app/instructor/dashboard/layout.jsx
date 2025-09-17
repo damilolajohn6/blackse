@@ -18,7 +18,7 @@ import "react-toastify/dist/ReactToastify.css";
 import InstructorAuthProvider from "@/components/Providers/InstructorAuthProvider";
 import useInstructorStore from "@/store/instructorStore";
 import Link from "next/link";
-import { useState } from "react"; // Added for managing mobile menu state
+import { useState, useEffect } from "react"; // Added useEffect for timeout
 import {
     Sheet,
     SheetContent,
@@ -43,6 +43,7 @@ import {
     LogOut,
     Bell,
     Search,
+    Video,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -67,82 +68,218 @@ const menuItems = [
         id: 3,
     },
     {
+        href: "/instructor/dashboard/live-classes",
+        icon: Video,
+        label: "Live Classes",
+        id: 4,
+    },
+    {
         href: "/instructor/dashboard/withdrawals",
         icon: DollarSign,
         label: "Withdrawals",
-        id: 4,
+        id: 5,
     },
     {
         href: "/instructor/dashboard/questions",
         icon: HelpCircle,
         label: "Questions",
-        id: 5,
+        id: 6,
     },
     {
         href: "/instructor/dashboard/analytics",
         icon: BarChart3,
         label: "Analytics",
-        id: 6,
+        id: 7,
     },
     {
         href: "/instructor/dashboard/announcements",
         icon: Megaphone,
         label: "Announcements",
-        id: 7,
+        id: 8,
     },
     {
         href: "/instructor/dashboard/certificates",
         icon: Award,
         label: "Certificates",
-        id: 8,
+        id: 9,
     },
     {
         href: "/instructor/dashboard/reviews",
         icon: Star,
         label: "Reviews",
-        id: 9,
+        id: 10,
     },
     {
         href: "/instructor/dashboard/discussions",
         icon: MessageSquare,
         label: "Discussions",
-        id: 10,
-    },
-    {
-        href: "/instructor/dashboard/coupons",
-        icon: Tag,
-        label: "Coupons",
         id: 11,
     },
+    // {
+    //     href: "/instructor/dashboard/coupons",
+    //     icon: Tag,
+    //     label: "Coupons",
+    //     id: 12,
+    // },
     {
         href: "/instructor/dashboard/profile",
         icon: User,
         label: "Profile",
-        id: 12,
+        id: 13,
     },
 ];
 
 export default function DashboardLayout({ children }) {
     const { instructor, isInstructor, logoutInstructor, isLoading } = useInstructorStore();
     const [isSheetOpen, setIsSheetOpen] = useState(false);
+    const [forceShow, setForceShow] = useState(false);
     const router = useRouter();
     const pathname = usePathname();
 
     const isActiveRoute = (href) => pathname === href;
 
-
     const handleLogout = async () => {
         await logoutInstructor(router);
     };
 
-    // Show loading state while authentication is in progress
-    if (isLoading) {
+    // Debug logging
+    // console.log("DashboardLayout render:", {
+    //     hasInstructor: !!instructor,
+    //     isInstructor,
+    //     isLoading,
+    //     instructorId: instructor?._id,
+    //     instructorEmail: instructor?.email,
+    //     forceShow,
+    //     hasToken: typeof window !== 'undefined' && !!localStorage.getItem('instructor_token'),
+    //     inconsistentState: isInstructor && !instructor
+    // });
+
+    // Force show dashboard after 15 seconds to prevent infinite loading
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            console.warn("Force showing dashboard after timeout");
+            setForceShow(true);
+        }, 15000);
+
+        return () => clearTimeout(timer);
+    }, []);
+
+    // Handle redirect to login if no token (client-side only)
+    useEffect(() => {
+        if (typeof window !== 'undefined') {
+            const hasToken = localStorage.getItem('instructor_token') || document.cookie.includes('instructor_token');
+            console.log("Token check:", { hasToken, instructor: !!instructor, forceShow });
+            
+            // Handle inconsistent state: isInstructor true but no instructor data
+            if (isInstructor && !instructor && hasToken) {
+                console.log("Inconsistent state detected: isInstructor true but no instructor data");
+                // Try to reload instructor data
+                const { loadInstructor } = useInstructorStore.getState();
+                loadInstructor();
+                return;
+            }
+            
+            if (!hasToken && !instructor && !forceShow) {
+                console.log("No instructor token found, redirecting to login");
+                // Use window.location for more reliable redirect
+                window.location.href = '/instructor/auth/login';
+            }
+        }
+    }, [instructor, forceShow, isInstructor]);
+
+    // Show loading state only if we don't have instructor data yet and not forcing show
+    // Don't get stuck in loading if we have instructor but isLoading is true
+    if (!instructor && isLoading && !forceShow) {
         return (
             <InstructorAuthProvider>
                 <div className="min-h-screen bg-background flex items-center justify-center">
                     <div className="text-center">
                         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-500 mx-auto mb-4"></div>
                         <p className="text-muted-foreground">Loading dashboard...</p>
+                        <p className="text-xs text-muted-foreground mt-2">If this takes too long, please refresh the page</p>
+                        <button 
+                            onClick={() => window.location.reload()} 
+                            className="mt-4 px-4 py-2 bg-indigo-500 text-white rounded-lg hover:bg-indigo-600 transition-colors"
+                        >
+                            Refresh Page
+                        </button>
+                    </div>
+                </div>
+            </InstructorAuthProvider>
+        );
+    }
+
+    // If we don't have instructor data and not forcing show, show loading with manual auth check
+    // Also handle inconsistent state where isInstructor is true but instructor is null
+    if ((!instructor || (isInstructor && !instructor)) && !forceShow) {
+        // Check if we have a token on client side
+        const hasToken = typeof window !== 'undefined' && 
+            (localStorage.getItem('instructor_token') || document.cookie.includes('instructor_token'));
+        
+        // If no token, show a simple redirect message
+        if (!hasToken) {
+            // Immediate redirect attempt
+            setTimeout(() => {
+                if (typeof window !== 'undefined') {
+                    window.location.href = '/instructor/auth/login';
+                }
+            }, 1000);
+            
+            return (
+                <InstructorAuthProvider>
+                    <div className="min-h-screen bg-background flex items-center justify-center">
+                        <div className="text-center">
+                            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-500 mx-auto mb-4"></div>
+                            <p className="text-muted-foreground">Redirecting to login...</p>
+                            <p className="text-xs text-muted-foreground mt-2">Please wait while we redirect you</p>
+                            <button 
+                                onClick={() => window.location.href = '/instructor/auth/login'} 
+                                className="mt-4 px-4 py-2 bg-indigo-500 text-white rounded-lg hover:bg-indigo-600 transition-colors"
+                            >
+                                Go to Login Now
+                            </button>
+                        </div>
+                    </div>
+                </InstructorAuthProvider>
+            );
+        }
+        
+        // Has token but no instructor data, show loading with manual auth check
+        return (
+            <InstructorAuthProvider>
+                <div className="min-h-screen bg-background flex items-center justify-center">
+                    <div className="text-center">
+                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-500 mx-auto mb-4"></div>
+                        <p className="text-muted-foreground">Authenticating...</p>
+                        <p className="text-xs text-muted-foreground mt-2">If this takes too long, please try the options below</p>
+                        <div className="mt-4 space-y-2">
+                            <button 
+                                onClick={() => window.location.reload()} 
+                                className="block w-full px-4 py-2 bg-indigo-500 text-white rounded-lg hover:bg-indigo-600 transition-colors"
+                            >
+                                Refresh Page
+                            </button>
+                            <button 
+                                onClick={() => window.location.href = '/instructor/auth/login'} 
+                                className="block w-full px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors"
+                            >
+                                Go to Login
+                            </button>
+                            <button 
+                                onClick={async () => {
+                                    console.log("Manual auth check triggered");
+                                    const { loadInstructor } = useInstructorStore.getState();
+                                    const result = await loadInstructor();
+                                    console.log("Manual auth result:", result);
+                                    if (result.success) {
+                                        window.location.reload();
+                                    }
+                                }} 
+                                className="block w-full px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+                            >
+                                Check Auth
+                            </button>
+                        </div>
                     </div>
                 </div>
             </InstructorAuthProvider>

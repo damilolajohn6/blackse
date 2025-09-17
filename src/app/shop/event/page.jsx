@@ -1,6 +1,7 @@
+import React from 'react'
 import EventList from '@/components/shop/EventList';
 import ShopDashboardSideBar from '@/components/shop/ShopDashboardSidebar';
-import React from 'react'
+import EventManagementDashboard from '@/components/shop/EventManagementDashboard';
 
 const EventPage = () => {
   return (
@@ -10,7 +11,10 @@ const EventPage = () => {
           <div className="w-[80px] 800px:w-[330px]">
             <ShopDashboardSideBar active={5} />
           </div>
-          <EventList  />
+          <div className="w-full">
+            <EventManagementDashboard />
+            <EventList />
+          </div>
         </div>
       </div>
     </div>

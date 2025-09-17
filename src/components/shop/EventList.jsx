@@ -8,11 +8,12 @@ import useEventStore from "@/store/eventStore";
 import { toast } from "react-toastify";
 import { DataGrid } from "@mui/x-data-grid";
 import { Button, CircularProgress } from "@mui/material";
-import { AiOutlineEdit, AiOutlineDelete } from "react-icons/ai";
+import { AiOutlineEdit, AiOutlineDelete, AiOutlineEye } from "react-icons/ai";
+import { MdPublish } from "react-icons/md";
 
 const EventList = () => {
   const { seller, isSeller, sellerToken } = useShopStore();
-  const { events, isLoading, error, fetchShopEvents, deleteEvent } =
+  const { events, isLoading, error, fetchShopEvents, deleteEvent, publishEvent } =
     useEventStore();
   const router = useRouter();
 
@@ -44,6 +45,18 @@ const EventList = () => {
     }
   };
 
+  const handlePublish = async (eventId) => {
+    if (confirm("Are you sure you want to publish this event? Once published, it will be visible to the public.")) {
+      try {
+        await publishEvent(eventId, sellerToken);
+        // Refresh the events list to show updated status
+        await fetchShopEvents(seller._id, sellerToken);
+      } catch (err) {
+        // Error handled by useEventStore
+      }
+    }
+  };
+
   const columns = [
     {
       field: "name",
@@ -55,7 +68,7 @@ const EventList = () => {
           href={`/shop/event/${params.id}`}
           className="text-blue-600 hover:underline"
         >
-          {params.value}
+          {params.value || "Untitled Event"}
         </Link>
       ),
     },
@@ -64,89 +77,157 @@ const EventList = () => {
       headerName: "Category",
       minWidth: 120,
       flex: 0.5,
+      renderCell: (params) => params.value || "N/A",
     },
     {
       field: "start_Date",
       headerName: "Start Date",
       minWidth: 150,
       flex: 0.7,
-      renderCell: (params) => new Date(params.value).toLocaleString(),
+      renderCell: (params) => {
+        if (!params.value) return "N/A";
+        try {
+          return new Date(params.value).toLocaleString();
+        } catch (error) {
+          return "Invalid Date";
+        }
+      },
     },
     {
       field: "Finish_Date",
       headerName: "End Date",
       minWidth: 150,
       flex: 0.7,
-      renderCell: (params) => new Date(params.value).toLocaleString(),
+      renderCell: (params) => {
+        if (!params.value) return "N/A";
+        try {
+          return new Date(params.value).toLocaleString();
+        } catch (error) {
+          return "Invalid Date";
+        }
+      },
     },
     {
       field: "status",
       headerName: "Status",
       minWidth: 120,
       flex: 0.5,
-      renderCell: (params) => (
-        <span
-          className={`px-2 py-1 rounded-full text-xs font-medium ${
-            params.value === "Running"
-              ? "bg-green-100 text-green-600"
-              : params.value === "Completed"
-              ? "bg-blue-100 text-blue-600"
-              : "bg-red-100 text-red-600"
-          }`}
-        >
-          {params.value}
-        </span>
-      ),
+      renderCell: (params) => {
+        const status = params.value || "Draft";
+        return (
+          <span
+            className={`px-2 py-1 rounded-full text-xs font-medium ${
+              status === "Running" || status === "Published"
+                ? "bg-green-100 text-green-600"
+                : status === "Completed"
+                ? "bg-blue-100 text-blue-600"
+                : status === "Cancelled"
+                ? "bg-red-100 text-red-600"
+                : "bg-gray-100 text-gray-600"
+            }`}
+          >
+            {status}
+          </span>
+        );
+      },
     },
     {
-      field: "discountPrice",
+      field: "price",
       headerName: "Price",
       minWidth: 100,
       flex: 0.5,
-      renderCell: (params) => `$${params.value.toFixed(2)}`,
+      renderCell: (params) => {
+        if (params.value === null || params.value === undefined) return "N/A";
+        try {
+          return `$${Number(params.value).toFixed(2)}`;
+        } catch (error) {
+          return "N/A";
+        }
+      },
     },
     {
       field: "stock",
       headerName: "Stock",
       minWidth: 100,
       flex: 0.5,
+      renderCell: (params) => {
+        if (params.value === null || params.value === undefined) return "N/A";
+        return params.value;
+      },
     },
     {
       field: "actions",
       headerName: "Actions",
-      minWidth: 150,
-      flex: 0.7,
+      minWidth: 200,
+      flex: 0.8,
       sortable: false,
-      renderCell: (params) => (
-        <div className="flex space-x-2">
-          <Link href={`/shop/event/edit-event/${params.id}`}>
-            <Button variant="outlined" size="small">
-              <AiOutlineEdit size={20} />
+      renderCell: (params) => {
+        const eventStatus = params.row.status || "Draft";
+        const canPublish = eventStatus === "Draft";
+        
+        return (
+          <div className="flex space-x-2">
+            <Link href={`/shop/event/${params.id}`}>
+              <Button 
+                variant="outlined" 
+                size="small"
+                title="View Event"
+              >
+                <AiOutlineEye size={20} />
+              </Button>
+            </Link>
+            <Link href={`/shop/event/edit-event/${params.id}`}>
+              <Button 
+                variant="outlined" 
+                size="small"
+                title="Edit Event"
+              >
+                <AiOutlineEdit size={20} />
+              </Button>
+            </Link>
+            {canPublish && (
+              <Button
+                variant="contained"
+                color="success"
+                size="small"
+                onClick={() => handlePublish(params.id)}
+                title="Publish Event"
+              >
+                <MdPublish size={20} />
+              </Button>
+            )}
+            <Button
+              variant="outlined"
+              color="error"
+              size="small"
+              onClick={() => handleDelete(params.id)}
+              title="Delete Event"
+            >
+              <AiOutlineDelete size={20} />
             </Button>
-          </Link>
-          <Button
-            variant="outlined"
-            color="error"
-            size="small"
-            onClick={() => handleDelete(params.id)}
-          >
-            <AiOutlineDelete size={20} />
-          </Button>
-        </div>
-      ),
+          </div>
+        );
+      },
     },
   ];
 
-  const rows = events.map((event) => ({
-    id: event._id,
-    name: event.name,
-    category: event.category,
-    start_Date: event.start_Date,
-    Finish_Date: event.Finish_Date,
-    status: event.status,
-    discountPrice: event.discountPrice,
-    stock: event.stock,
-  }));
+  const rows = (events || []).map((event) => {
+    // Debug logging to help identify data structure issues
+    if (process.env.NODE_ENV === 'development') {
+      console.log('Event data:', event);
+    }
+    
+    return {
+      id: event._id,
+      name: event.name || "Untitled Event",
+      category: event.category || "N/A",
+      start_Date: event.start_Date,
+      Finish_Date: event.Finish_Date,
+      status: event.status || "Draft",
+      price: event.discountPrice || event.originalPrice || 0,
+      stock: event.stock || 0,
+    };
+  });
 
   return (
     <div className="w-full p-6 md:p-8">

@@ -92,6 +92,13 @@ export default function InstructorAuthProvider({ children }) {
       return { success: true };
     }
 
+    // If we're on dashboard route and have token but no instructor data, let DashboardLayout handle it
+    if (pathname.startsWith('/instructor/dashboard') && instructorToken && !instructor) {
+      console.log("Dashboard route with token but no instructor data, letting DashboardLayout handle it");
+      setIsInitializing(false);
+      return { success: false, message: "Let DashboardLayout handle authentication" };
+    }
+
     // Create initialization promise to prevent concurrent calls
     initializationPromise.current = (async () => {
       try {
@@ -136,13 +143,16 @@ export default function InstructorAuthProvider({ children }) {
         if (!result.success) {
           console.log("Failed to load instructor data:", result.message);
           // Only clear data and redirect for auth errors, not network errors
-          if (result.message?.includes('401') || result.message?.includes('403') || result.message?.includes('unauthorized') || result.message?.includes('Invalid') || result.message?.includes('expired') || result.message?.includes('not found')) {
+          if (result.message?.includes('401') || result.message?.includes('403') || result.message?.includes('unauthorized') || result.message?.includes('Invalid') || result.message?.includes('expired') || result.message?.includes('not found') || result.message?.includes('Authentication failed')) {
             clearInstructorData();
             if (!isPendingApprovalRoute) {
               router.push("/instructor/auth/login");
             }
-          } else {
+          } else if (result.message?.includes('Network error') || result.message?.includes('Network Error') || result.message?.includes('CONNECTION_REFUSED')) {
             // For network errors, show error but don't redirect
+            setAuthError("Unable to connect to server. Please check your internet connection and try again.");
+          } else {
+            // For other errors, show error but don't redirect
             setAuthError(result.message || "Failed to load instructor data");
           }
           return result;
@@ -201,7 +211,9 @@ export default function InstructorAuthProvider({ children }) {
     refreshToken, 
     clearInstructorData, 
     loadInstructor, 
-    router
+    router,
+    pathname,
+    authError
   ]);
 
   // Initialize authentication on mount and route changes
@@ -246,7 +258,8 @@ export default function InstructorAuthProvider({ children }) {
   }, [instructorToken, isTokenValid, refreshToken, clearInstructorData, router, isPublicRoute]);
 
   // Show loading spinner during initialization (but not for public routes and only on client)
-  if (isClient && isInitializing && !isPublicRoute) {
+  // Only show if we don't have instructor data yet to avoid conflicts with DashboardLayout
+  if (isClient && isInitializing && !isPublicRoute && !instructor) {
     return (
       <Box
         sx={{

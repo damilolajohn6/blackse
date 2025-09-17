@@ -2,7 +2,10 @@ import EditEvent from '@/components/shop/EditEvent';
 import ShopDashboardSideBar from '@/components/shop/ShopDashboardSidebar';
 import React from 'react'
 
-const EditEventPage = () => {
+const EditEventPage = async ({ params }) => {
+  // Await the params to get the actual values
+  const resolvedParams = await params;
+  
   return (
     <div>
       <div className="">
@@ -10,7 +13,7 @@ const EditEventPage = () => {
           <div className="w-[80px] 800px:w-[330px]">
             <ShopDashboardSideBar active={5} />
           </div>
-          <EditEvent />
+          <EditEvent eventId={resolvedParams?.id} />
         </div>
       </div>
     </div>

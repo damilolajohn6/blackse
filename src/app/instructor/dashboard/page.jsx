@@ -56,6 +56,7 @@ import {
   Calendar,
   Eye,
   BarChart3,
+  Video,
 } from "lucide-react";
 import { FaSync, FaRefresh } from "react-icons/fa";
 
@@ -105,12 +106,14 @@ export default function InstructorDashboardPage() {
     withdrawals,
     courses,
     totalCourses,
+    // liveClassStats,
     loadDashboardAnalytics,
     getInstructorStats,
     fetchWithdrawals,
     fetchCourses,
     createWithdrawal,
     getWithdrawalStats,
+    // getLiveClassStats,
     instructorToken,
   } = useInstructorStore();
 
@@ -144,6 +147,13 @@ export default function InstructorDashboardPage() {
       icon: DollarSign,
       color: "bg-purple-500",
     },
+    // {
+    //   title: "Live Classes",
+    //   value: liveClassStats?.totalLiveClasses || 0,
+    //   subValue: `Active: ${liveClassStats?.activeLiveClasses || 0}`,
+    //   icon: Video,
+    //   color: "bg-red-500",
+    // },
   ];
 
   // Initialize dashboard data
@@ -179,24 +189,56 @@ export default function InstructorDashboardPage() {
         setIsInitialized(true);
       }
 
-      // Load all dashboard data concurrently
+      // Load all dashboard data concurrently with better error handling
       const promises = [
-        loadDashboardAnalytics("30d"),
-        getInstructorStats(),
-        fetchWithdrawals({ page: 1, limit: 5 }),
-        fetchCourses({ page: 1, limit: 10 }),
-        getWithdrawalStats(),
+        loadDashboardAnalytics("30d").catch(err => {
+          console.warn("Analytics failed:", err.message);
+          return { success: false, message: err.message };
+        }),
+        getInstructorStats().catch(err => {
+          console.warn("Stats failed:", err.message);
+          return { success: false, message: err.message };
+        }),
+        fetchWithdrawals({ page: 1, limit: 5 }).catch(err => {
+          console.warn("Withdrawals failed:", err.message);
+          return { success: false, message: err.message };
+        }),
+        fetchCourses({ page: 1, limit: 10 }).catch(err => {
+          console.warn("Courses failed:", err.message);
+          return { success: false, message: err.message };
+        }),
+        getWithdrawalStats().catch(err => {
+          console.warn("Withdrawal stats failed:", err.message);
+          return { success: false, message: err.message };
+        }),
+        // getLiveClassStats().catch(err => {
+        //   console.warn("Live class stats failed:", err.message);
+        //   return { success: false, message: err.message };
+        // }),
       ];
 
       const results = await Promise.allSettled(promises);
 
       // Check results and log any failures
+      const failedOperations = [];
       results.forEach((result, index) => {
         if (result.status === "rejected") {
-          const operationNames = ["Analytics", "Instructor Stats", "Withdrawals", "Courses", "Withdrawal Stats"];
+          const operationNames = ["Analytics", "Instructor Stats", "Withdrawals", "Courses", "Withdrawal Stats", "Live Class Stats"];
           console.warn(`${operationNames[index]} failed to load:`, result.reason);
+          failedOperations.push(operationNames[index]);
+        } else if (result.value && !result.value.success) {
+          const operationNames = ["Analytics", "Instructor Stats", "Withdrawals", "Courses", "Withdrawal Stats", "Live Class Stats"];
+          console.warn(`${operationNames[index]} returned error:`, result.value.message);
+          failedOperations.push(operationNames[index]);
         }
       });
+
+      // If all operations failed, show error
+      if (failedOperations.length === results.length) {
+        setDataLoadingError("Failed to load dashboard data. Please check your connection and try again.");
+      } else if (failedOperations.length > 0) {
+        console.log(`Some operations failed: ${failedOperations.join(", ")}, but dashboard will still load`);
+      }
 
       setRetryCount(0);
       console.log("Dashboard data loaded successfully");
@@ -410,6 +452,10 @@ export default function InstructorDashboardPage() {
     );
   }
 
+  // Show dashboard even if some data is still loading
+  // This prevents the dashboard from being stuck in loading state
+  const shouldShowDashboard = instructor && instructorToken && (isInitialized || !isDataLoading);
+
   // Error state with retry options
   if (dataLoadingError && retryCount >= maxRetries) {
     return (
@@ -455,6 +501,16 @@ export default function InstructorDashboardPage() {
 
   return (
     <div className="space-y-8 p-6 min-h-screen bg-gray-50">
+      {/* Loading indicator for data fetching */}
+      {isDataLoading && (
+        <div className="fixed top-4 right-4 z-50">
+          <div className="bg-white rounded-lg shadow-lg p-3 flex items-center gap-2">
+            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+            <span className="text-sm text-gray-600">Loading data...</span>
+          </div>
+        </div>
+      )}
+
       {/* Header Section */}
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
